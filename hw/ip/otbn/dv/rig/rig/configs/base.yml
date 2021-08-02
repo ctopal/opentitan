@@ -5,10 +5,11 @@
 gen-weights:
   # Generators that can continue the program
   Branch: 0.1
-  Jump: 0.1
-  Loop: 0.1
+  Jump: 0.2
+  Loop: 0.2
   StraightLineInsn: 1.0
+  KnownWDR: 0.05
 
   # Generators that end the program
   ECall: 1
-  BadInsn: 1
+  BadInsn: 0

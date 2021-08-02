@@ -7,7 +7,7 @@ import random
 from typing import Dict, List, Optional, Set, Tuple
 
 from shared.operand import (OperandType,
-                            ImmOperandType, OptionOperandType, RegOperandType)
+                            ImmOperandType, OptionOperandType, RegOperandType, EnumOperandType)
 
 from .known_mem import KnownMem
 from .program import ProgInsn
@@ -282,7 +282,7 @@ class Model:
         registers, but matters for x1.
 
         '''
-        assert not self.is_const(reg_type, idx)
+        assert not self.is_const(reg_type, idx), (reg_type, idx)
 
         if reg_type == 'gpr':
             if idx == 0:
@@ -760,6 +760,58 @@ class Model:
         elif grs_inc:
             self._inc_gpr(grs, grs_val, 1, 31)
 
+    def update_for_bnxor(self, prog_insn: ProgInsn) -> None:
+        '''Update model state after an BN.XOR
+
+        If the source register happens to have a known value, we can do the
+        addition and store the known result.
+
+        '''
+        insn = prog_insn.insn
+        op_vals = prog_insn.operands
+        assert insn.mnemonic == 'bn.xor'
+        assert len(insn.operands) == len(op_vals)
+
+        exp_shape = (
+                     #wrd
+                     isinstance(insn.operands[0].op_type, RegOperandType) and
+                     insn.operands[0].op_type.reg_type == 'wdr' and
+                     insn.operands[0].op_type.is_dest() and
+                     #wrs1
+                     isinstance(insn.operands[1].op_type, RegOperandType) and
+                     insn.operands[1].op_type.reg_type == 'wdr' and
+                     not insn.operands[1].op_type.is_dest() and
+                     #wrs2
+                     isinstance(insn.operands[2].op_type, RegOperandType) and
+                     insn.operands[2].op_type.reg_type == 'wdr' and
+                     not insn.operands[2].op_type.is_dest() and
+                     #shift_bits
+                     isinstance(insn.operands[4].op_type, ImmOperandType))
+        if not exp_shape:
+            raise RuntimeError('BN.XOR instruction read from insns.yml is '
+                               'not the shape expected by '
+                               'Model.update_for_bnaddi.')
+
+        wrs1_val = self.get_reg('wdr', op_vals[1])
+        wrs2_val = self.get_reg('wdr', op_vals[2])
+       
+        if (op_vals[1] == op_vals[2]) and (op_vals[4] == 0):
+            result = 0
+        elif wrs1_val is None or wrs2_val is None:
+            result = None
+        else:
+            if op_vals[3]:
+                src2_val = wrs2_val >> op_vals[4]
+                result = (wrs1_val ^ src2_val)
+            else:
+                src2_val = wrs2_val << op_vals[4]
+                result = (wrs1_val ^ src2_val)
+
+        self._generic_update_for_insn(prog_insn)
+
+        self.write_reg('wdr', op_vals[0], result, True)
+
+
     def _generic_update_for_insn(self, prog_insn: ProgInsn) -> None:
         '''Update registers and memory for prog_insn
 
@@ -809,7 +861,8 @@ class Model:
             'addi': self.update_for_addi,
             'bn.lid': self.update_for_bnlid,
             'bn.sid': self.update_for_bnsid,
-            'bn.movr': self.update_for_bnmovr
+            'bn.movr': self.update_for_bnmovr,
+            'bn.xor': self.update_for_bnxor
         }
         updater = updaters.get(prog_insn.insn.mnemonic)
         if updater is not None:
