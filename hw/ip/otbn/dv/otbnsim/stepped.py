@@ -190,7 +190,7 @@ def on_edn_rnd_data(sim: OTBNSim, args: List[str]) -> None:
         raise ValueError('edn_rnd_data expects exactly 1 argument. Got {}.'
                          .format(args))
 
-    edn_rnd_data = read_word('edn_rnd_data', args[0], 256)
+    edn_rnd_data = read_word('edn_rnd_data', args[0], 32)
     sim.state.set_rnd_data(edn_rnd_data)
 
 

@@ -48,7 +48,15 @@ module tb;
 
   assign edn_rnd_rsp.edn_ack  = edn_rnd_req.edn_req;
   assign edn_rnd_rsp.edn_fips = 1'b0;
-  assign edn_rnd_rsp.edn_bus  = 32'h99999999;
+
+  initial begin
+    fork
+      forever begin
+        assign edn_rnd_rsp.edn_bus  = $urandom();
+        #1us;
+      end
+    join_none
+  end 
 
   assign edn_urnd_rsp.edn_ack  = edn_urnd_req.edn_req;
   assign edn_urnd_rsp.edn_fips = 1'b0;
@@ -156,16 +164,13 @@ module tb;
   // decoding errors).
   assign model_if.start = dut.start_q;
 
-  // Internally otbn_core uses a 256-bit width interface for EDN data. This maps to muliple EDN
-  // requests at this level (via a packing FIFO internal to otbn). The model works with the internal
-  // otbn_core interface so probe into it here to provide the relevant signals to the model.
-  logic edn_rnd_data_valid;
-  logic edn_urnd_data_valid;
+  // Should I also model request? I think so but lets start with small steps.
 
-  assign edn_rnd_data_valid = dut.edn_rnd_req & dut.edn_rnd_ack;
   assign edn_urnd_data_valid = dut.edn_urnd_req & dut.edn_urnd_ack;
 
   bit [31:0] model_insn_cnt;
+
+  // I think we need some type of a for loop for 8-chunk stuff
 
   otbn_core_model #(
     .DmemSizeByte (otbn_reg_pkg::OTBN_DMEM_SIZE),
@@ -183,8 +188,9 @@ module tb;
 
     .start_addr_i (model_if.start_addr),
 
-    .edn_rnd_data_valid_i  (edn_rnd_data_valid),
-    .edn_rnd_data_i        (dut.edn_rnd_data),
+    //.edn_rnd_o (edn_rnd_req),
+    .edn_rnd_i (edn_rnd_rsp),
+
     .edn_urnd_data_valid_i (edn_urnd_data_valid),
 
     .insn_cnt_o   (model_insn_cnt),
@@ -242,7 +248,7 @@ module tb;
     uvm_config_db#(virtual otbn_rf_base_if)::set(
       null, "*.env", "rf_base_vif",
       dut.u_otbn_core.u_otbn_rf_base.i_otbn_rf_base_if);
-
+      
     $timeformat(-12, 0, " ps", 12);
     run_test();
   end
