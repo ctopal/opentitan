@@ -345,9 +345,7 @@ void ISSWrapper::start(uint32_t addr) {
 
 void ISSWrapper::edn_rnd_data(uint32_t edn_rnd_data) {
   std::ostringstream oss;
-  std::ostringstream lol;
-  lol << std::hex << "0x" << std::setfill('0') << std::setw(1) << edn_rnd_data;
-  oss << "edn_rnd_data " << lol << "\n";
+  oss << "edn_rnd_data " << std::hex << "0x" << std::setfill('0') << std::setw(1) << edn_rnd_data << "\n";
   run_command(oss.str(), nullptr);
 }
 

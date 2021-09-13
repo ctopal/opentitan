@@ -45,6 +45,7 @@ class OTBNState:
         self.non_insn_stall = False
         self._start_stall = False
         self._urnd_stall = False
+        self._rnd_stall = False
 
         self.loop_stack = LoopStack()
         self.ext_regs = OTBNExtRegs()
@@ -55,6 +56,9 @@ class OTBNState:
 
         self._new_rnd_data = None  # type: Optional[int]
         self._urnd_reseed_complete = False
+        self.rnd_counter = 8
+        self.rnd_256b = 0
+        self.rnd_sync_counter = 4
 
     def get_next_pc(self) -> int:
         if self._pc_next_override is not None:
@@ -109,14 +113,28 @@ class OTBNState:
         # If error bits are set, pending_halt should have been set as well.
         assert self._err_bits == 0
 
+        # Operation below takes 4 cycles in RTL simulation because of sync stuff
         if self._new_rnd_data:
-            self.wsrs.RND.set_unsigned(self._new_rnd_data)
+            self.rnd_sync_counter -= 1
+            if self.rnd_sync_counter:
+                return
+            self.rnd_256b = (self.rnd_256b << 32) + self._new_rnd_data
+            self.rnd_sync_counter = 4
+            self.rnd_counter -= 1
             self._new_rnd_data = None
+            if not self.rnd_counter:
+                self.wsrs.RND.set_unsigned(self.rnd_256b)
+                self.rnd_counter = 8
+                self.rnd_256b = 0
+                self._rnd_stall = True
 
         if self._urnd_stall:
             if self._urnd_reseed_complete:
                 self._urnd_stall = False
+            return
 
+        if self._rnd_stall:
+            self._rnd_stall = False
             return
 
         # If self._start_stall, this is the end of the stall cycle at the start

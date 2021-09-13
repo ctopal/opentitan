@@ -145,7 +145,7 @@ class RandWSR(WSR):
         the EDN bus and supplies the simulator with an RND value when a fresh
         one is seen on the EDN bus).
         '''
-        assert 0 <= value < (1 << 256)
+        assert 0 <= value < (1 << 256), value
         self._random_value = value
 
 

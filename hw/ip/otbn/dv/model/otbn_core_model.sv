@@ -13,6 +13,7 @@
 
 module otbn_core_model
   import otbn_pkg::*;
+  import edn_pkg::*;
 #(
   // Size of the instruction memory, in bytes
   parameter int ImemSizeByte = 4096,
@@ -38,9 +39,8 @@ module otbn_core_model
   output err_bits_t err_bits_o, // valid when done_o is asserted
 
   input  logic [ImemAddrWidth-1:0] start_addr_i, // start byte address in IMEM
-
-  input logic            edn_rnd_data_valid_i, // provide RND data from EDN
-  input logic [31:0]     edn_rnd_data_i,
+  // output edn_pkg::edn_req_t                          edn_rnd_o, //TODO: Model request from OTBN
+  input  edn_pkg::edn_rsp_t                          edn_rnd_i,
   input logic            edn_urnd_data_valid_i, // URND reseed from EDN is valid
 
   output bit [31:0]      insn_cnt_o, // INSN_CNT register
@@ -58,7 +58,7 @@ module otbn_core_model
                                  logic            start,
                                  int unsigned     start_addr,
                                  int unsigned     status,
-                                 logic            edn_rnd_data_valid,
+                                 logic            edn_rnd_ack,
                                  logic [31:0]     edn_rnd_data,
                                  logic            edn_urnd_data_valid,
                                  inout bit [31:0] insn_cnt,
@@ -129,7 +129,7 @@ module otbn_core_model
         status <= otbn_model_step(model_handle,
                                   start_i, start_addr_32,
                                   status,
-                                  edn_rnd_data_valid_i, edn_rnd_data_i,
+                                  edn_rnd_i.edn_ack, edn_rnd_i.edn_bus,
                                   edn_urnd_data_valid_i,
                                   insn_cnt_d,
                                   raw_err_bits_d,

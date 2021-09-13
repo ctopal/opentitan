@@ -8,9 +8,7 @@ from .isa import OTBNInsn
 from .state import OTBNState
 from .stats import ExecutionStats
 from .trace import Trace
-
-_TEST_RND_DATA = \
-    0x99999999_99999999_99999999_99999999_99999999_99999999_99999999_99999999
+import random
 
 
 class OTBNSim:
@@ -53,7 +51,7 @@ class OTBNSim:
             if self.state.wsrs.RND.pending_request:
                 # If an instruction requests RND data, make it available
                 # immediately.
-                self.state.wsrs.RND.set_unsigned(_TEST_RND_DATA)
+                self.state.wsrs.RND.set_unsigned(random.getrandbits(256))
 
         return insn_count
 
