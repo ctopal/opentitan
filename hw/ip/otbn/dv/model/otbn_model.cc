@@ -50,7 +50,7 @@ struct OtbnModel {
   // -1 on failure. If gen_trace is true, pass trace entries to the trace
   // checker. If the model has finished, writes otbn.ERR_BITS to *err_bits.
   int step(svLogic edn_rnd_data_valid,
-           svLogicVecVal *edn_rnd_data, /* logic [255:0] */
+           svLogicVecVal *edn_rnd_data, /* logic [31:0] */
            svLogic edn_urnd_data_valid, svBitVecVal *insn_cnt /* bit [31:0] */,
            svBitVecVal *err_bits /* bit [31:0] */,
            svBitVecVal *stop_pc /* bit [31:0] */);
@@ -307,7 +307,7 @@ int OtbnModel::start(unsigned start_addr) {
 }
 
 int OtbnModel::step(svLogic edn_rnd_data_valid,
-                    svLogicVecVal *edn_rnd_data, /* logic [255:0] */
+                    svLogicVecVal *edn_rnd_data, /* logic [31:0] */
                     svLogic edn_urnd_data_valid,
                     svBitVecVal *insn_cnt /* bit [31:0] */,
                     svBitVecVal *err_bits /* bit [31:0] */,
@@ -323,9 +323,7 @@ int OtbnModel::step(svLogic edn_rnd_data_valid,
 
   try {
     if (edn_rnd_data_valid) {
-      uint32_t int_edn_rnd_data[8];
-      set_rnd_data(int_edn_rnd_data, edn_rnd_data);
-      iss->edn_rnd_data(int_edn_rnd_data);
+      iss->edn_rnd_data(edn_rnd_data);
     }
 
     if (edn_urnd_data_valid) {
@@ -607,7 +605,7 @@ extern "C" void otbn_model_destroy(OtbnModel *model) { delete model; }
 // described above).
 extern "C" unsigned otbn_model_step(
     OtbnModel *model, svLogic start, unsigned start_addr, unsigned status,
-    svLogic edn_rnd_data_valid, svLogicVecVal *edn_rnd_data, /* logic [255:0] */
+    svLogic edn_rnd_data_valid, svLogicVecVal *edn_rnd_data, /* logic [31:0] */
     svLogic edn_urnd_data_valid, svBitVecVal *insn_cnt /* bit [31:0] */,
     svBitVecVal *err_bits /* bit [31:0] */,
     svBitVecVal *stop_pc /* bit [31:0] */) {

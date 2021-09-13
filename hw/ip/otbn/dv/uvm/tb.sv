@@ -48,7 +48,7 @@ module tb;
 
   assign edn_rnd_rsp.edn_ack  = edn_rnd_req.edn_req;
   assign edn_rnd_rsp.edn_fips = 1'b0;
-  assign edn_rnd_rsp.edn_bus  = 32'h99999999;
+  assign edn_rnd_rsp.edn_bus  = $urandom();
 
   assign edn_urnd_rsp.edn_ack  = edn_urnd_req.edn_req;
   assign edn_urnd_rsp.edn_fips = 1'b0;
@@ -156,16 +156,50 @@ module tb;
   // decoding errors).
   assign model_if.start = dut.start_q;
 
-  // Internally otbn_core uses a 256-bit width interface for EDN data. This maps to muliple EDN
-  // requests at this level (via a packing FIFO internal to otbn). The model works with the internal
-  // otbn_core interface so probe into it here to provide the relevant signals to the model.
+  //// Internally otbn_core uses a 256-bit width interface for EDN data. This maps to muliple EDN
+  //// requests at this level (via a packing FIFO internal to otbn). The model works with the internal
+  //// otbn_core interface so probe into it here to provide the relevant signals to the model.
   logic edn_rnd_data_valid;
   logic edn_urnd_data_valid;
 
-  assign edn_rnd_data_valid = dut.edn_rnd_req & dut.edn_rnd_ack;
-  assign edn_urnd_data_valid = dut.edn_urnd_req & dut.edn_urnd_ack;
+  // Model a new ACK signal (which enables when finishes taking 8 chunks from edn). Use that ACK to
+  // produce valid signal. 
+
+  // Modelling FIFO at the top level
+  logic edn_rnd_data_done;
+  logic edn_rnd_data_ack;
+  logic [2:0] counter;
+  logic [31:0] edn_rnd_data [0:7];
+  logic [31:0] fifo_data_i;
+  logic [31:0] fifo_data_o;
+
+  assign fifo_data_i = edn_rnd_rsp.edn_bus;
+
+  always @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      for (int i = 0; i < 8; i++) begin
+        edn_rnd_data[i] <= '0;
+      end
+      counter = '0;
+    end else begin
+      for (int i = 1; i < 8; i++) begin
+        edn_rnd_data[0] <= fifo_data_i;
+        edn_rnd_data[i] <= edn_rnd_data[i-1];
+      end
+      counter += edn_rnd_req.edn_req;
+    end
+  end
+  
+  assign edn_rnd_data_ack = &counter;
+
+  // Should I also model request? I think so but lets start with small steps.
+
+  //assign edn_rnd_data_valid = dut.edn_rnd_req & dut.edn_rnd_ack;
+  //assign edn_urnd_data_valid = dut.edn_urnd_req & dut.edn_urnd_ack;
 
   bit [31:0] model_insn_cnt;
+
+  // I think we need some type of a for loop for 8-chunk stuff
 
   otbn_core_model #(
     .DmemSizeByte (otbn_reg_pkg::OTBN_DMEM_SIZE),
@@ -184,7 +218,7 @@ module tb;
     .start_addr_i (model_if.start_addr),
 
     .edn_rnd_data_valid_i  (edn_rnd_data_valid),
-    .edn_rnd_data_i        (dut.edn_rnd_data),
+    .edn_rnd_data_i        (edn_rnd_data[7]),
     .edn_urnd_data_valid_i (edn_urnd_data_valid),
 
     .insn_cnt_o   (model_insn_cnt),
@@ -242,7 +276,8 @@ module tb;
     uvm_config_db#(virtual otbn_rf_base_if)::set(
       null, "*.env", "rf_base_vif",
       dut.u_otbn_core.u_otbn_rf_base.i_otbn_rf_base_if);
-
+      
+    $monitor("data_in=%0d", fifo_data_i);
     $timeformat(-12, 0, " ps", 12);
     run_test();
   end

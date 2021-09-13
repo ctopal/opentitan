@@ -40,7 +40,7 @@ module otbn_core_model
   input  logic [ImemAddrWidth-1:0] start_addr_i, // start byte address in IMEM
 
   input logic            edn_rnd_data_valid_i, // provide RND data from EDN
-  input logic [WLEN-1:0] edn_rnd_data_i,
+  input logic [31:0]     edn_rnd_data_i,
   input logic            edn_urnd_data_valid_i, // URND reseed from EDN is valid
 
   output bit [31:0]      insn_cnt_o, // INSN_CNT register
@@ -59,7 +59,7 @@ module otbn_core_model
                                  int unsigned     start_addr,
                                  int unsigned     status,
                                  logic            edn_rnd_data_valid,
-                                 logic [WLEN-1:0] edn_rnd_data,
+                                 logic [31:0]     edn_rnd_data,
                                  logic            edn_urnd_data_valid,
                                  inout bit [31:0] insn_cnt,
                                  inout bit [31:0] err_bits,
