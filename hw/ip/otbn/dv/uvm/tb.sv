@@ -166,6 +166,7 @@ module tb;
 
   // Should I also model request? I think so but lets start with small steps.
 
+  assign edn_rnd_data_valid = dut.edn_rnd_req & dut.edn_rnd_ack;
   assign edn_urnd_data_valid = dut.edn_urnd_req & dut.edn_urnd_ack;
 
   bit [31:0] model_insn_cnt;
@@ -190,6 +191,7 @@ module tb;
 
     //.edn_rnd_o (edn_rnd_req),
     .edn_rnd_i (edn_rnd_rsp),
+    .edn_rnd_data_valid_i (edn_rnd_data_valid),
 
     .edn_urnd_data_valid_i (edn_urnd_data_valid),
 

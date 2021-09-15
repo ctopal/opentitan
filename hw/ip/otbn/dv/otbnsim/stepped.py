@@ -185,13 +185,15 @@ def on_print_call_stack(sim: OTBNSim, args: List[str]) -> None:
         print('0x{:08x}'.format(value))
 
 
-def on_edn_rnd_data(sim: OTBNSim, args: List[str]) -> None:
-    if len(args) != 1:
-        raise ValueError('edn_rnd_data expects exactly 1 argument. Got {}.'
+def on_edn_step(sim: OTBNSim, args: List[str]) -> None:
+    if len(args) != 2:
+        raise ValueError('edn_step expects exactly 2 argument. Got {}.'
                          .format(args))
 
-    edn_rnd_data = read_word('edn_rnd_data', args[0], 32)
-    sim.state.set_rnd_data(edn_rnd_data)
+    edn_rnd_data = read_word('edn_step', args[0], 32)
+    edn_rnd_data_valid = bool(args[1])
+
+    sim.state.set_rnd_data(edn_rnd_data, edn_rnd_data_valid)
 
 
 def on_edn_urnd_reseed_complete(sim: OTBNSim, args: List[str]) -> None:
@@ -212,7 +214,7 @@ _HANDLERS = {
     'dump_d': on_dump_d,
     'print_regs': on_print_regs,
     'print_call_stack': on_print_call_stack,
-    'edn_rnd_data': on_edn_rnd_data,
+    'edn_step': on_edn_step,
     'edn_urnd_reseed_complete': on_edn_urnd_reseed_complete
 }
 

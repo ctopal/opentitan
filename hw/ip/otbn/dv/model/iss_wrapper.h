@@ -38,7 +38,7 @@ struct ISSWrapper {
 
   // Provide data for RND. ISS will stall when RND is read and RND data isn't
   // available
-  void edn_rnd_data(uint32_t edn_rnd_data);
+  void edn_step(uint32_t edn_rnd_data, bool edn_rnd_data_valid);
 
   // Signal URND reseed at beginning of execution is complete
   void edn_urnd_reseed_complete();
