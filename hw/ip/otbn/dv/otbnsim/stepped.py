@@ -191,9 +191,12 @@ def on_edn_step(sim: OTBNSim, args: List[str]) -> None:
                          .format(args))
 
     edn_rnd_data = read_word('edn_step', args[0], 32)
-    edn_rnd_data_valid = bool(args[1])
+    edn_rnd_data_valid = int(args[1])
 
-    sim.state.set_rnd_data(edn_rnd_data, edn_rnd_data_valid)
+    if edn_rnd_data_valid:
+        sim.state.rnd_completed()
+    else:
+        sim.state.step_edn(edn_rnd_data)
 
 
 def on_edn_urnd_reseed_complete(sim: OTBNSim, args: List[str]) -> None:

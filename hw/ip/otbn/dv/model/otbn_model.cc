@@ -46,15 +46,12 @@ struct OtbnModel {
   // start address. Returns 0 on success; -1 on failure.
   int start(unsigned start_addr);
 
-  // TODO: Add description
-  void edn_step(svLogicVecVal *edn_rnd_data,
-            svLogic edn_rnd_data_valid);
-
   // Step once in the model. Returns 1 if the model has finished, 0 if not and
   // -1 on failure. If gen_trace is true, pass trace entries to the trace
   // checker. If the model has finished, writes otbn.ERR_BITS to *err_bits.
-  int step(svLogic edn_rnd_ack,
-           svLogicVecVal *edn_rnd_data, /* logic [31:0] */
+  int step(svLogic edn_rnd_data_ack,
+           svLogicVecVal *edn_rnd_data /* logic [31:0] */,
+           svLogic edn_rnd_data_valid,
            svLogic edn_urnd_data_valid, svBitVecVal *insn_cnt /* bit [31:0] */,
            svBitVecVal *err_bits /* bit [31:0] */,
            svBitVecVal *stop_pc /* bit [31:0] */);
@@ -310,16 +307,9 @@ int OtbnModel::start(unsigned start_addr) {
   return 0;
 }
 
-void OtbnModel::edn_step(svLogicVecVal *edn_rnd_data, /* logic [31:0] */
-                        svLogic edn_rnd_data_valid) {
-
-    ISSWrapper *iss = ensure_wrapper();
-    iss->edn_step(edn_rnd_data->aval, edn_rnd_data_valid);
-}
-
-
-int OtbnModel::step(svLogic edn_rnd_ack,
-                    svLogicVecVal *edn_rnd_data, /* logic [31:0] */
+int OtbnModel::step(svLogic edn_rnd_data_ack,
+                    svLogicVecVal *edn_rnd_data /* logic [31:0] */,
+                    svLogic edn_rnd_data_valid,
                     svLogic edn_urnd_data_valid,
                     svBitVecVal *insn_cnt /* bit [31:0] */,
                     svBitVecVal *err_bits /* bit [31:0] */,
@@ -330,10 +320,15 @@ int OtbnModel::step(svLogic edn_rnd_ack,
   if (!iss)
     return -1;
 
-  assert(!is_xz(edn_rnd_ack));
   assert(!is_xz(edn_urnd_data_valid));
 
   try {
+    // If EDN response interface sends an acknowledgment or RTL signals a valid
+    // ISS forwards the 32b package and the valid signal.
+    if (edn_rnd_data_ack || edn_rnd_data_valid) {
+      iss->edn_step(edn_rnd_data->aval, edn_rnd_data_valid);
+    }
+    
     if (edn_urnd_data_valid) {
       iss->edn_urnd_reseed_complete();
     }
@@ -579,14 +574,6 @@ extern "C" OtbnModel *otbn_model_init(const char *mem_scope,
 
 extern "C" void otbn_model_destroy(OtbnModel *model) { delete model; }
 
-extern "C" void otbn_model_edn_step(
-    OtbnModel *model, svLogicVecVal *edn_rnd_data, svLogic edn_rnd_data_valid){
-
-        model->edn_step(edn_rnd_data, edn_rnd_data_valid);
-
-}
-
-
 
 // The main entry point to the OTBN model, exported from here and used in
 // otbn_core_model.sv.
@@ -622,7 +609,8 @@ extern "C" void otbn_model_edn_step(
 // described above).
 extern "C" unsigned otbn_model_step(
     OtbnModel *model, svLogic start, unsigned start_addr, unsigned status,
-    svLogic edn_rnd_ack, svLogicVecVal *edn_rnd_data, /* logic [31:0] */
+    svLogic edn_rnd_data_ack, svLogicVecVal* edn_rnd_data /* logic [31:0] */,
+    svLogic edn_rnd_data_valid,
     svLogic edn_urnd_data_valid, svBitVecVal *insn_cnt /* bit [31:0] */,
     svBitVecVal *err_bits /* bit [31:0] */,
     svBitVecVal *stop_pc /* bit [31:0] */) {
@@ -669,8 +657,8 @@ extern "C" unsigned otbn_model_step(
     return status;
 
   // Step the model once
-  switch (model->step(edn_rnd_ack, edn_rnd_data, edn_urnd_data_valid,
-                      insn_cnt, err_bits, stop_pc)) {
+  switch (model->step(edn_rnd_data_ack, edn_rnd_data, edn_rnd_data_valid,
+                      edn_urnd_data_valid, insn_cnt, err_bits, stop_pc)) {
     case 0:
       // Still running: no change
       break;

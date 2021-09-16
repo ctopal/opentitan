@@ -38,15 +38,14 @@ module otbn_core_model
 
   output err_bits_t err_bits_o, // valid when done_o is asserted
 
-  input  logic [ImemAddrWidth-1:0] start_addr_i, // start byte address in IMEM
-  // output edn_pkg::edn_req_t                          edn_rnd_o, //TODO: Model request from OTBN
-  input  edn_pkg::edn_rsp_t                          edn_rnd_i,
-  input logic            edn_rnd_data_valid_i, // RND from EDN is valid
-  input logic            edn_urnd_data_valid_i, // URND reseed from EDN is valid
+  input logic [ImemAddrWidth-1:0] start_addr_i, // start byte address in IMEM
+  input edn_pkg::edn_rsp_t        edn_rnd_i, // EDN response interface
+  input logic                     edn_rnd_data_valid_i, // RND from EDN is valid (DUT perspective)
+  input logic                     edn_urnd_data_valid_i, // URND reseed from EDN is valid
 
-  output bit [31:0]      insn_cnt_o, // INSN_CNT register
+  output bit [31:0]               insn_cnt_o, // INSN_CNT register
 
-  output bit             err_o // something went wrong
+  output bit                      err_o // something went wrong
 );
 
   import "DPI-C" context function chandle otbn_model_init(string mem_scope,
@@ -54,17 +53,15 @@ module otbn_core_model
                                                           int unsigned imem_words,
                                                           int unsigned dmem_words);
   import "DPI-C" function void otbn_model_destroy(chandle model);
-  import "DPI-C" context function 
-    void otbn_model_edn_step(chandle      model,
-                             logic [31:0] edn_rnd_data,
-                             logic        edn_rnd_data_valid);
+
   import "DPI-C" context function
     int unsigned otbn_model_step(chandle          model,
                                  logic            start,
                                  int unsigned     start_addr,
                                  int unsigned     status,
-                                 logic            edn_rnd_ack,
+                                 logic            edn_rnd_data_ack,
                                  logic [31:0]     edn_rnd_data,
+                                 logic            edn_rnd_data_valid,
                                  logic            edn_urnd_data_valid,
                                  inout bit [31:0] insn_cnt,
                                  inout bit [31:0] err_bits,
@@ -131,15 +128,12 @@ module otbn_core_model
       insn_cnt_q <= 0;
     end else begin
       if (start_i | running | check_due) begin
-        if (edn_rnd_i.edn_ack | edn_rnd_data_valid_i) begin
-          otbn_model_edn_step(model_handle,
-                              edn_rnd_i.edn_bus,
-                              edn_rnd_data_valid_i);
-        end
         status <= otbn_model_step(model_handle,
                                   start_i, start_addr_32,
                                   status,
-                                  edn_rnd_i.edn_ack, edn_rnd_i.edn_bus,
+                                  edn_rnd_i.edn_ack,
+                                  edn_rnd_i.edn_bus,
+                                  edn_rnd_data_valid_i,
                                   edn_urnd_data_valid_i,
                                   insn_cnt_d,
                                   raw_err_bits_d,

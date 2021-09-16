@@ -164,14 +164,9 @@ module tb;
   // decoding errors).
   assign model_if.start = dut.start_q;
 
-  // Should I also model request? I think so but lets start with small steps.
-
-  assign edn_rnd_data_valid = dut.edn_rnd_req & dut.edn_rnd_ack;
   assign edn_urnd_data_valid = dut.edn_urnd_req & dut.edn_urnd_ack;
 
   bit [31:0] model_insn_cnt;
-
-  // I think we need some type of a for loop for 8-chunk stuff
 
   otbn_core_model #(
     .DmemSizeByte (otbn_reg_pkg::OTBN_DMEM_SIZE),
@@ -189,9 +184,9 @@ module tb;
 
     .start_addr_i (model_if.start_addr),
 
-    //.edn_rnd_o (edn_rnd_req),
     .edn_rnd_i (edn_rnd_rsp),
-    .edn_rnd_data_valid_i (edn_rnd_data_valid),
+    // Signal below is needed to check if the RTL is processed the incoming EDN data in time.
+    .edn_rnd_data_valid_i (dut.edn_rnd_ack),
 
     .edn_urnd_data_valid_i (edn_urnd_data_valid),
 
