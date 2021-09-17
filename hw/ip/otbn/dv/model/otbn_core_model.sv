@@ -14,6 +14,7 @@
 module otbn_core_model
   import otbn_pkg::*;
   import otbn_model_pkg::*;
+  import edn_pkg::*;
 #(
   // Size of the instruction memory, in bytes
   parameter int ImemSizeByte = 4096,
@@ -30,23 +31,24 @@ module otbn_core_model
 
   localparam int ImemAddrWidth = prim_util_pkg::vbits(ImemSizeByte)
 )(
-  input  logic  clk_i,
-  input  logic  rst_ni,
+  input  logic                     clk_i,
+  input  logic                     edn_clk_i,
+  input  logic                     rst_ni,
+  input  logic                     edn_rst_ni,
 
-  input  logic  start_i, // start the operation
-  output bit    done_o,  // operation done
+  input  logic                     start_i, // start the operation
+  output bit                       done_o,  // operation done
 
-  output err_bits_t err_bits_o, // valid when done_o is asserted
+  output err_bits_t                err_bits_o, // valid when done_o is asserted
 
   input  logic [ImemAddrWidth-1:0] start_addr_i, // start byte address in IMEM
 
-  input logic            edn_rnd_data_valid_i, // provide RND data from EDN
-  input logic [WLEN-1:0] edn_rnd_data_i,
-  input logic            edn_urnd_data_valid_i, // URND reseed from EDN is valid
+  input  edn_pkg::edn_rsp_t        edn_rnd_i, // EDN response interface
+  input  logic                     edn_rnd_cdc_done_i, // RND from EDN is valid (DUT perspective)
+  input  logic                     edn_urnd_data_valid_i, // URND reseed from EDN is valid
 
-  output bit [31:0]      insn_cnt_o, // INSN_CNT register
-
-  output bit             err_o // something went wrong
+  output bit [31:0]                insn_cnt_o, // INSN_CNT register
+  output bit                       err_o // something went wrong
 );
 
   localparam int ImemSizeWords = ImemSizeByte / 4;
@@ -97,6 +99,19 @@ module otbn_core_model
   bit [31:0] stop_pc_d, stop_pc_q;
   bit [31:0] insn_cnt_d, insn_cnt_q;
 
+  logic unused_rnd_rsp_fips;
+
+  // EDN Stepping is done with the EDN clock for also asserting the CDC measures in the design.
+  always_ff @(posedge edn_clk_i or negedge edn_rst_ni) begin
+    if (!edn_rst_ni) begin
+      // If we are in reset there is nothing to do.
+    end else begin
+      edn_model_step(model_handle,
+                     edn_rnd_i.edn_ack,
+                     edn_rnd_i.edn_bus);
+    end
+  end
+
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       if (status != 0) begin
@@ -111,7 +126,7 @@ module otbn_core_model
         status <= otbn_model_step(model_handle,
                                   start_i, start_addr_32,
                                   status,
-                                  edn_rnd_data_valid_i, edn_rnd_data_i,
+                                  edn_rnd_cdc_done_i,
                                   edn_urnd_data_valid_i,
                                   insn_cnt_d,
                                   raw_err_bits_d,
@@ -127,6 +142,7 @@ module otbn_core_model
 
   assign err_bits_o = raw_err_bits_q[$bits(err_bits_t)-1:0];
   assign unused_raw_err_bits = ^raw_err_bits_q[31:$bits(err_bits_t)];
+  assign unused_rnd_rsp_fips = edn_rnd_i.edn_fips;
 
   assign insn_cnt_o = insn_cnt_q;
 
