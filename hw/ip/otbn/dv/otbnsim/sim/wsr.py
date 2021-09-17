@@ -100,6 +100,11 @@ class RandWSR(WSR):
         self._random_value = None  # type: Optional[int]
         self._random_value_read = False
         self.pending_request = False
+        self.rnd_prefetch = False
+
+    def set_rnd_prefetch(self) -> None:
+
+        self.rnd_prefetch = True
 
     def read_unsigned(self) -> int:
         assert self._random_value is not None

@@ -22,6 +22,10 @@ OtbnModel *otbn_model_init(const char *mem_scope, const char *design_scope,
 // Delete an OtbnModel
 void otbn_model_destroy(OtbnModel *model);
 
+// Calls edn_step function of OtbnModel
+void edn_model_step(OtbnModel *model, 
+                    svLogicVecVal *edn_rnd_data /* logic [31:0] */);
+
 // The main entry point to the OTBN model, exported from here and used in
 // otbn_core_model.sv.
 //
@@ -55,8 +59,7 @@ void otbn_model_destroy(OtbnModel *model);
 // If start is true, we start the model at start_addr and then step once (as
 // described above).
 unsigned otbn_model_step(OtbnModel *model, svLogic start, unsigned start_addr,
-                         unsigned status, svLogic edn_rnd_data_valid,
-                         svLogicVecVal *edn_rnd_data, /* logic [255:0] */
+                         unsigned status, svLogic edn_rnd_cdc_done,
                          svLogic edn_urnd_data_valid,
                          svBitVecVal *insn_cnt /* bit [31:0] */,
                          svBitVecVal *err_bits /* bit [31:0] */,

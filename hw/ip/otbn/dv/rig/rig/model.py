@@ -239,6 +239,7 @@ class Model:
         csrs.touch_addr(0x7c8)      # FLAGS
         csrs.touch_range(0x7d0, 8)  # MOD0 - MOD7
         csrs.touch_addr(0xfc0)      # RND
+        csrs.touch_addr(0x7d8)      # RND_PREFETCH
 
         wsrs.touch_addr(0x0)        # MOD
         wsrs.touch_addr(0x1)        # RND

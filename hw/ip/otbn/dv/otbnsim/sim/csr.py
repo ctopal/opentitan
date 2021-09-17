@@ -86,7 +86,7 @@ class CSRFile:
 
         if idx == 0x7d8:
             # RND_PREFETCH
-            # TODO: Implement.
+            wsrs.RND.set_rnd_prefetch()
             return
 
         if idx == 0xfc0:

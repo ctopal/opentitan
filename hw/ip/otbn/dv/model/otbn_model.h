@@ -33,12 +33,14 @@ class OtbnModel {
   // start address. Returns 0 on success; -1 on failure.
   int start(unsigned start_addr);
 
+  // EDN Step sends ISS the RND data when ACK signal is high.
+  void edn_step(svLogicVecVal *edn_rnd_data /* logic [31:0] */);
+
   // Step once in the model. Returns 1 if the model has finished, 0 if not and
   // -1 on failure. If gen_trace is true, pass trace entries to the trace
   // checker. If the model has finished, writes otbn.ERR_BITS to *err_bits.
-  int step(svLogic edn_rnd_data_valid,
-           svLogicVecVal *edn_rnd_data, /* logic [255:0] */
-           svLogic edn_urnd_data_valid, svBitVecVal *insn_cnt /* bit [31:0] */,
+  int step(svLogic edn_rnd_cdc_done, svLogic edn_urnd_data_valid,
+           svBitVecVal *insn_cnt /* bit [31:0] */,
            svBitVecVal *err_bits /* bit [31:0] */,
            svBitVecVal *stop_pc /* bit [31:0] */);
 

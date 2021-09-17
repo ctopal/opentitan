@@ -56,6 +56,12 @@ class OTBNState:
         self._new_rnd_data = None  # type: Optional[int]
         self._urnd_reseed_complete = False
 
+        self.rnd_256b_counter = 8
+        self.rnd_cdc_counter = 6
+        self.rnd_complete = False
+        self.rnd_cdc_pending = False
+        self.rnd_256b = 0
+
     def get_next_pc(self) -> int:
         if self._pc_next_override is not None:
             return self._pc_next_override
@@ -66,8 +72,25 @@ class OTBNState:
         assert(self.is_pc_valid(next_pc))
         self._pc_next_override = next_pc
 
-    def set_rnd_data(self, rnd_data: int) -> None:
+    def step_edn(self, rnd_data: int) -> None:
+        # Take the new data
         self._new_rnd_data = rnd_data
+
+        # Collect 32b packages in a 256b variable
+        self.rnd_256b = (self.rnd_256b << 32) + self._new_rnd_data
+        self._new_rnd_data = None
+
+        # Count until 8 valid packages are recieved
+        self.rnd_256b_counter -= 1
+        if self.rnd_256b_counter:
+            return
+
+        # Reset the 32b package counter and wait until receiving RTL
+        self.rnd_256b_counter = 8
+        self.rnd_cdc_pending = True
+
+    def rnd_completed(self) -> None:
+        self.rnd_complete = True
 
     def set_urnd_reseed_complete(self) -> None:
         self._urnd_reseed_complete = True
@@ -110,9 +133,18 @@ class OTBNState:
         # If error bits are set, pending_halt should have been set as well.
         assert self._err_bits == 0
 
-        if self._new_rnd_data:
-            self.wsrs.RND.set_unsigned(self._new_rnd_data)
-            self._new_rnd_data = None
+        # RTL must send a RND done signal 5 cycles after calculation
+        assert self.rnd_cdc_counter
+
+        # Stall until getting the RND done signal from RTL, then set RND register
+        if self.rnd_cdc_pending: 
+            if self.rnd_complete:
+                self.wsrs.RND.set_unsigned(self.rnd_256b)
+                self.rnd_cdc_pending = False
+                self.rnd_complete = False
+                self.rnd_256b = 0
+                self.rnd_cdc_counter = 6
+            self.rnd_cdc_counter -= 1
 
         if self._urnd_stall:
             if self._urnd_reseed_complete:
