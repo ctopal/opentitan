@@ -7,6 +7,7 @@ module otbn_top_sim (
   input IO_RST_N
 );
   import otbn_pkg::*;
+  import edn_pkg::*;
 
   // Size of the instruction memory, in bytes
   parameter int ImemSizeByte = otbn_reg_pkg::OTBN_IMEM_SIZE;
@@ -109,6 +110,11 @@ module otbn_top_sim (
   assign unused_imem_top_rdata = &{1'b0, imem_rdata[38:32]};
 
   localparam logic [WLEN-1:0] FixedEdnVal = {{(WLEN / 4){4'h9}}};
+ 
+  edn_req_t rnd_req;
+  edn_rsp_t rnd_rsp;
+
+  assign rnd_req.edn_req = edn_rnd_req;
 
   otbn_mock_edn #(
     .Width       ( WLEN        ),
@@ -117,12 +123,18 @@ module otbn_top_sim (
     .clk_i      ( IO_CLK       ),
     .rst_ni     ( IO_RST_N     ),
 
-    .edn_req_i  ( edn_rnd_req  ),
-    .edn_ack_o  ( edn_rnd_ack  ),
-    .edn_data_o ( edn_rnd_data )
+    .edn_req_i  ( rnd_req  ),
+    .edn_rsp_o  ( rnd_rsp  ),
+
+    .edn_data_o ( edn_rnd_data ),
+    .edn_ack_o  ( edn_rnd_ack  )
   );
 
   assign edn_rnd_data_valid = edn_rnd_req & edn_rnd_ack;
+ 
+  edn_req_t urnd_req;
+
+  assign urnd_req.edn_req = edn_urnd_req;
 
   otbn_mock_edn #(
     .Width       ( WLEN        ),
@@ -131,7 +143,9 @@ module otbn_top_sim (
     .clk_i      ( IO_CLK       ),
     .rst_ni     ( IO_RST_N     ),
 
-    .edn_req_i  ( edn_urnd_req  ),
+    .edn_req_i  ( urnd_req ),
+    .edn_rsp_o  (  ),
+
     .edn_ack_o  ( edn_urnd_ack  ),
     .edn_data_o ( edn_urnd_data )
   );
@@ -282,7 +296,9 @@ module otbn_top_sim (
     .DesignScope     ( DesignScope )
   ) u_otbn_core_model (
     .clk_i                 ( IO_CLK ),
+    .edn_clk_i             ( IO_CLK ),
     .rst_ni                ( IO_RST_N ),
+    .edn_rst_ni            ( IO_RST_N ),
 
     .start_i               ( otbn_start ),
     .done_o                ( otbn_model_done ),
@@ -291,8 +307,8 @@ module otbn_top_sim (
 
     .err_bits_o            ( otbn_model_err_bits ),
 
-    .edn_rnd_data_valid_i  ( edn_rnd_data_valid ),
-    .edn_rnd_data_i        ( edn_rnd_data ),
+    .edn_rnd_i             ( rnd_rsp ),
+    .edn_rnd_cdc_done_i    ( edn_rnd_data_valid ),
     .edn_urnd_data_valid_i ( edn_urnd_data_valid ),
 
     .insn_cnt_o            ( otbn_model_insn_cnt ),
