@@ -98,8 +98,10 @@ class RandWSR(WSR):
         super().__init__(name)
 
         self._random_value = None  # type: Optional[int]
+        self.random_value_cached = None  # type: Optional[int]
         self._random_value_read = False
         self.pending_request = False
+        self.rnd_prefetch = False
 
     def read_unsigned(self) -> int:
         assert self._random_value is not None
@@ -120,6 +122,13 @@ class RandWSR(WSR):
         '''
         return
 
+    def set_rnd_prefetch(self) -> None:
+        self.rnd_prefetch = True
+
+    def set_rnd_cache(self, value: int) -> None:
+        assert 0 <= value < (1 << 256)
+        self.random_value_cached = value
+
     def commit(self) -> None:
         if self._random_value_read:
             self._random_value = None
@@ -129,7 +138,11 @@ class RandWSR(WSR):
 
     def request_value(self) -> bool:
         '''Signals intent to read RND, returns True if a value is available'''
-        if self._random_value:
+        if self.random_value_cached is not None:
+            self.set_unsigned(self.random_value_cached)
+            self.random_value_cached = None
+
+        if self._random_value is not None:
             return True
 
         self.pending_request = True
@@ -145,7 +158,7 @@ class RandWSR(WSR):
         the EDN bus and supplies the simulator with an RND value when a fresh
         one is seen on the EDN bus).
         '''
-        assert 0 <= value < (1 << 256)
+        assert 0 <= value < (1 << 256), value
         self._random_value = value
 
 

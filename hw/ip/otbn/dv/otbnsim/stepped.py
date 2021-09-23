@@ -271,7 +271,7 @@ def on_edn_step(sim: OTBNSim, args: List[str]) -> Optional[OTBNSim]:
 
 def on_edn_rnd_cdc_done(sim: OTBNSim, args: List[str]) -> Optional[OTBNSim]:
     if len(args) != 0:
-        raise ValueError('edn_rnd_cdc_done expects exactly 0 argument. Got {}.'
+        raise ValueError('edn_rnd_cdc_done expects zero arguments. Got {}.'
                          .format(args))
 
     sim.state.rnd_completed()

@@ -106,9 +106,10 @@ module otbn_core_model
     if (!edn_rst_ni) begin
       // If we are in reset there is nothing to do.
     end else begin
-      edn_model_step(model_handle,
-                     edn_rnd_i.edn_ack,
-                     edn_rnd_i.edn_bus);
+      if(edn_rnd_i.edn_ack) begin
+        edn_model_step(model_handle,
+                       edn_rnd_i.edn_bus);
+       end 
     end
   end
 

@@ -34,8 +34,7 @@ class OtbnModel {
   int start(unsigned start_addr);
 
   // EDN Step sends ISS the RND data when ACK signal is high.
-  void edn_step(svLogic edn_rnd_data_ack,
-                svLogicVecVal *edn_rnd_data /* logic [31:0] */);
+  void edn_step(svLogicVecVal *edn_rnd_data /* logic [31:0] */);
 
   // Step once in the model. Returns 1 if the model has finished, 0 if not and
   // -1 on failure. If gen_trace is true, pass trace entries to the trace

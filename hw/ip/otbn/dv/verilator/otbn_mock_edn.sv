@@ -44,7 +44,7 @@ module otbn_mock_edn
       edn_req_active  <= 0;
     end else begin
       if (edn_req_active) begin
-        edn_req_counter <= edn_req_counter + 5'b1;
+        edn_req_counter <= edn_req_counter + 1;
       end
 
       if (edn_req_i.edn_req & ~edn_req_active) begin

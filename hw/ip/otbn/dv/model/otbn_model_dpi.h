@@ -23,7 +23,7 @@ OtbnModel *otbn_model_init(const char *mem_scope, const char *design_scope,
 void otbn_model_destroy(OtbnModel *model);
 
 // Calls edn_step function of OtbnModel
-void edn_model_step(OtbnModel *model, svLogic edn_rnd_data_ack,
+void edn_model_step(OtbnModel *model,
                     svLogicVecVal *edn_rnd_data /* logic [31:0] */);
 
 // The main entry point to the OTBN model, exported from here and used in

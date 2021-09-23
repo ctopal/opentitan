@@ -251,13 +251,10 @@ int OtbnModel::start(unsigned start_addr) {
   return 0;
 }
 
-void OtbnModel::edn_step(svLogic edn_rnd_data_ack,
-                         svLogicVecVal *edn_rnd_data /* logic [31:0] */) {
+void OtbnModel::edn_step(svLogicVecVal *edn_rnd_data /* logic [31:0] */) {
   ISSWrapper *iss = ensure_wrapper();
 
-  if (edn_rnd_data_ack) {
-    iss->edn_step(edn_rnd_data->aval);
-  }
+  iss->edn_step(edn_rnd_data->aval);
 }
 
 int OtbnModel::step(svLogic edn_rnd_cdc_done, svLogic edn_urnd_data_valid,
@@ -545,9 +542,9 @@ OtbnModel *otbn_model_init(const char *mem_scope, const char *design_scope,
 
 void otbn_model_destroy(OtbnModel *model) { delete model; }
 
-void edn_model_step(OtbnModel *model, svLogic edn_rnd_data_ack,
+void edn_model_step(OtbnModel *model,
                     svLogicVecVal *edn_rnd_data /* logic [31:0] */) {
-  model->edn_step(edn_rnd_data_ack, edn_rnd_data);
+  model->edn_step(edn_rnd_data);
 }
 
 unsigned otbn_model_step(OtbnModel *model, svLogic start, unsigned start_addr,

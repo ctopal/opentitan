@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from typing import Dict, List, Optional
-
+import sys
 from shared.mem_layout import get_memory_layout
 
 from .csr import CSRFile
@@ -56,11 +56,11 @@ class OTBNState:
         self._new_rnd_data = None  # type: Optional[int]
         self._urnd_reseed_complete = False
 
-        self.rnd_256b_counter = 8
-        self.rnd_cdc_counter = 6
+        self.rnd_256b_counter = 0
         self.rnd_complete = False
         self.rnd_cdc_pending = False
         self.rnd_256b = 0
+        self.rnd_cached_tmp = None
 
     def get_next_pc(self) -> int:
         if self._pc_next_override is not None:
@@ -77,20 +77,28 @@ class OTBNState:
         self._new_rnd_data = rnd_data
 
         # Collect 32b packages in a 256b variable
-        self.rnd_256b = (self.rnd_256b << 32) + self._new_rnd_data
+        self.rnd_256b = ((self.rnd_256b << 32) + self._new_rnd_data)
+        self.rnd_256b = self.rnd_256b & ((1 << 256) - 1)
         self._new_rnd_data = None
 
-        # Count until 8 valid packages are recieved
-        self.rnd_256b_counter -= 1
-        if self.rnd_256b_counter:
+        # Count until 8 valid packages are received
+        self.rnd_256b_counter += 1
+        if self.rnd_256b_counter < 8:
             return
 
-        # Reset the 32b package counter and wait until recieveing RTL
-        self.rnd_256b_counter = 8
+        # Reset the 32b package counter and wait until receiving RTL
+        self.rnd_256b_counter = 0
+
         self.rnd_cdc_pending = True
 
     def rnd_completed(self) -> None:
+        # When all packages are recieved, if we are trying to a prefetch
+        # store the result in cache
+        assert self.rnd_cdc_pending
+
         self.rnd_complete = True
+        self.rnd_cdc_pending = False
+
 
     def set_urnd_reseed_complete(self) -> None:
         self._urnd_reseed_complete = True
@@ -133,19 +141,14 @@ class OTBNState:
         # If error bits are set, pending_halt should have been set as well.
         assert self._err_bits == 0
 
-        # RTL must send a RND done signal 5 cycles after calculation
-        assert self.rnd_cdc_counter
-
-        # Stall until getting the RND done signal from RTL, then set RND register
-        if self.rnd_cdc_pending:
-            if self.rnd_complete:
+        if self.rnd_complete:
+            if self.wsrs.RND.rnd_prefetch:
+                self.wsrs.RND.set_rnd_cache(self.rnd_256b)
+                self.wsrs.RND.rnd_prefetch = False
+            else:
                 self.wsrs.RND.set_unsigned(self.rnd_256b)
-                self.rnd_cdc_pending = False
-                self.rnd_complete = False
-                self.rnd_256b = 0
-                self.rnd_cdc_counter = 6
-            self.rnd_cdc_counter -= 1
-            return
+            self.rnd_256b = 0
+            self.rnd_complete = False
 
         if self._urnd_stall:
             if self._urnd_reseed_complete:
@@ -203,7 +206,22 @@ class OTBNState:
 
         # Reset CSRs, WSRs, loop stack and call stack
         self.csrs = CSRFile()
+
+        if self.wsrs.RND.rnd_prefetch and self.rnd_complete:
+            self.rnd_cached_tmp = self.rnd_256b
+            self.wsrs.RND.rnd_prefetch = False
+            self.rnd_complete = False
+            self.rnd_256b = 0
+
+        # Save the cached value when starting another run
+        if self.wsrs.RND.random_value_cached is not None:
+            self.rnd_cached_tmp = self.wsrs.RND.random_value_cached
+
         self.wsrs = WSRFile()
+        if self.rnd_cached_tmp is not None:
+            self.wsrs.RND.set_rnd_cache(self.rnd_cached_tmp)
+            self.rnd_cached_tmp = None
+
         self.loop_stack = LoopStack()
         self.gprs.start()
 

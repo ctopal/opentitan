@@ -786,21 +786,21 @@ module otbn
       .DesignScope("")
     ) u_otbn_core_model (
       .clk_i,
-      .rst_ni ( rst_n ),
+      .rst_ni                (rst_n),
 
-      .start_i ( start_model ),
-      .done_o  ( done_model ),
+      .start_i               (start_model),
+      .done_o                (done_model),
 
-      .err_bits_o ( err_bits_model ),
+      .err_bits_o            (err_bits_model),
 
-      .start_addr_i ( start_addr ),
+      .start_addr_i          (start_addr),
 
-      .edn_rnd_i             ( edn_rnd_i ),
-      .edn_rnd_cdc_done_i    ( edn_rnd_data_valid ),
+      .edn_rnd_i             (edn_rnd_i),
+      .edn_rnd_cdc_done_i    (edn_rnd_data_valid),
 
-      .edn_urnd_data_valid_i ( edn_urnd_data_valid ),
+      .edn_urnd_data_valid_i (edn_urnd_data_valid),
 
-      .insn_cnt_o ( insn_cnt_model ),
+      .insn_cnt_o            (insn_cnt_model),
 
       .err_o ()
     );

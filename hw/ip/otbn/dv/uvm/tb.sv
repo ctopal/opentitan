@@ -48,7 +48,7 @@ module tb;
 
   assign edn_rnd_rsp.edn_ack  = edn_rnd_req.edn_req;
   assign edn_rnd_rsp.edn_fips = 1'b0;
-  assign edn_rnd_rsp.edn_bus = $urandom();
+  assign edn_rnd_rsp.edn_bus = 32'h99999999;
 
 
   assign edn_urnd_rsp.edn_ack  = edn_urnd_req.edn_req;

@@ -422,6 +422,7 @@ class CSRRS(OTBNInsn):
             # A read from RND. If a RND value is not available, request_value()
             # initiates or continues an EDN request and returns False. If a RND
             # value is available, it returns True.
+            
             while not state.wsrs.RND.request_value():
                 # There's a pending EDN request. Stall for a cycle.
                 yield
@@ -458,6 +459,7 @@ class CSRRW(OTBNInsn):
             # A read from RND. If a RND value is not available, request_value()
             # initiates or continues an EDN request and returns False. If a RND
             # value is available, it returns True.
+
             while not state.wsrs.RND.request_value():
                 # There's a pending EDN request. Stall for a cycle.
                 yield
@@ -1219,6 +1221,7 @@ class BNWSRR(OTBNInsn):
             # A read from RND. If a RND value is not available, request_value()
             # initiates or continues an EDN request and returns False. If a RND
             # value is available, it returns True.
+            
             while not state.wsrs.RND.request_value():
                 # There's a pending EDN request. Stall for a cycle.
                 yield

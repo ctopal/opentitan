@@ -17,7 +17,6 @@ package otbn_model_pkg;
   import "DPI-C" function void otbn_model_destroy(chandle model);
 
   import "DPI-C" function void edn_model_step(chandle model,
-                                              logic edn_rnd_data_ack,
                                               logic [31:0] edn_rnd_data);
 
   import "DPI-C" context function
