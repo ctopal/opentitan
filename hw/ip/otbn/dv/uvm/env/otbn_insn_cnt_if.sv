@@ -18,7 +18,7 @@ interface otbn_insn_cnt_if (
 );
 
   // Check that the model and OTBN have matching instruction counters
-  //`ASSERT(InsnCntMatches_A, model_insn_cnt_i == insn_cnt_i)
+  `ASSERT(InsnCntMatches_A, model_insn_cnt_i == insn_cnt_i)
 
   // As well as exposing the count itself, we've also exposed the "increment me" signal
   // (insn_executing_i && !stall_i). This means we can see when an instruction counter of all ones

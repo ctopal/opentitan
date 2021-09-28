@@ -48,6 +48,6 @@ interface otbn_model_if #(
 
   // The err signal is asserted by the model if it fails to find the DUT or if it finds a mismatch
   // in results. It should never go high.
-//  `ASSERT(NoModelErrs, !err)
+  `ASSERT(NoModelErrs, !err)
 
 endinterface

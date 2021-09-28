@@ -127,7 +127,6 @@ module otbn_core_model
         status <= otbn_model_step(model_handle,
                                   start_i, start_addr_32,
                                   status,
-                                  edn_rnd_cdc_done_i,
                                   edn_urnd_data_valid_i,
                                   insn_cnt_d,
                                   raw_err_bits_d,
@@ -138,6 +137,7 @@ module otbn_core_model
       end else begin
         // If we're not running and we're not being told to start, there's nothing to do.
       end
+      edn_model_rnd_cdc_done(model_handle, edn_rnd_cdc_done_i);
     end
   end
 

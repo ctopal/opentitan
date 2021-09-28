@@ -257,7 +257,14 @@ void OtbnModel::edn_step(svLogicVecVal *edn_rnd_data /* logic [31:0] */) {
   iss->edn_step(edn_rnd_data->aval);
 }
 
-int OtbnModel::step(svLogic edn_rnd_cdc_done, svLogic edn_urnd_data_valid,
+void OtbnModel::edn_rnd_cdc_done(svLogic edn_rnd_cdc_done){
+  ISSWrapper *iss = ensure_wrapper();
+  if (edn_rnd_cdc_done) {
+    iss->edn_rnd_cdc_done();
+  }
+}
+
+int OtbnModel::step(svLogic edn_urnd_data_valid,
                     svBitVecVal *insn_cnt /* bit [31:0] */,
                     svBitVecVal *err_bits /* bit [31:0] */,
                     svBitVecVal *stop_pc /* bit [31:0] */) {
@@ -267,15 +274,9 @@ int OtbnModel::step(svLogic edn_rnd_cdc_done, svLogic edn_urnd_data_valid,
   if (!iss)
     return -1;
 
-  assert(!is_xz(edn_rnd_cdc_done));
   assert(!is_xz(edn_urnd_data_valid));
 
   try {
-    // If RTL signals CDC done ISS forwards the CDC done signal.
-    if (edn_rnd_cdc_done) {
-      iss->edn_rnd_cdc_done();
-    }
-
     if (edn_urnd_data_valid) {
       iss->edn_urnd_reseed_complete();
     }
@@ -547,9 +548,13 @@ void edn_model_step(OtbnModel *model,
   model->edn_step(edn_rnd_data);
 }
 
+void edn_model_rnd_cdc_done(OtbnModel *model,
+                            svLogic edn_rnd_cdc_done) {
+  model->edn_rnd_cdc_done(edn_rnd_cdc_done);
+}
+
 unsigned otbn_model_step(OtbnModel *model, svLogic start, unsigned start_addr,
-                         unsigned status, svLogic edn_rnd_cdc_done,
-                         svLogic edn_urnd_data_valid,
+                         unsigned status, svLogic edn_urnd_data_valid,
                          svBitVecVal *insn_cnt /* bit [31:0] */,
                          svBitVecVal *err_bits /* bit [31:0] */,
                          svBitVecVal *stop_pc /* bit [31:0] */) {
@@ -596,7 +601,7 @@ unsigned otbn_model_step(OtbnModel *model, svLogic start, unsigned start_addr,
     return status;
 
   // Step the model once
-  switch (model->step(edn_rnd_cdc_done, edn_urnd_data_valid, insn_cnt, err_bits,
+  switch (model->step(edn_urnd_data_valid, insn_cnt, err_bits,
                       stop_pc)) {
     case 0:
       // Still running: no change

@@ -61,6 +61,7 @@ class OTBNState:
         self.rnd_cdc_pending = False
         self.rnd_256b = 0
         self.rnd_cached_tmp = None
+        self.counter = 0
 
     def get_next_pc(self) -> int:
         if self._pc_next_override is not None:
@@ -97,6 +98,13 @@ class OTBNState:
         assert self.rnd_cdc_pending
 
         self.rnd_complete = True
+        if self.wsrs.RND.rnd_prefetch:
+            self.wsrs.RND.set_rnd_cache(self.rnd_256b)
+            self.wsrs.RND.rnd_prefetch = False
+        else:
+            self.wsrs.RND.set_unsigned(self.rnd_256b)
+        self.rnd_256b = 0
+        self.rnd_complete = False
         self.rnd_cdc_pending = False
 
 
@@ -140,15 +148,6 @@ class OTBNState:
 
         # If error bits are set, pending_halt should have been set as well.
         assert self._err_bits == 0
-
-        if self.rnd_complete:
-            if self.wsrs.RND.rnd_prefetch:
-                self.wsrs.RND.set_rnd_cache(self.rnd_256b)
-                self.wsrs.RND.rnd_prefetch = False
-            else:
-                self.wsrs.RND.set_unsigned(self.rnd_256b)
-            self.rnd_256b = 0
-            self.rnd_complete = False
 
         if self._urnd_stall:
             if self._urnd_reseed_complete:
@@ -207,12 +206,6 @@ class OTBNState:
         # Reset CSRs, WSRs, loop stack and call stack
         self.csrs = CSRFile()
 
-        if self.wsrs.RND.rnd_prefetch and self.rnd_complete:
-            self.rnd_cached_tmp = self.rnd_256b
-            self.wsrs.RND.rnd_prefetch = False
-            self.rnd_complete = False
-            self.rnd_256b = 0
-
         # Save the cached value when starting another run
         if self.wsrs.RND.random_value_cached is not None:
             self.rnd_cached_tmp = self.wsrs.RND.random_value_cached
@@ -248,6 +241,7 @@ class OTBNState:
         clear the busy flag and write STOP_PC.
 
         '''
+
         if self._err_bits:
             # Abort all pending changes, including changes to external registers.
             self._abort()
