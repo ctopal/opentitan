@@ -102,7 +102,10 @@ static void test_barrett384(otbn_t *otbn_ctx) {
   CHECK_DIF_OK(
       dif_otbn_dmem_write(&otbn_ctx->dif, /*offset_bytes=*/320, &u, sizeof(u)));
 
+  CHECK(dif_otbn_control_software_errs_fatal(&otbn_ctx->dif, true) == kDifOk);
   CHECK(otbn_execute(otbn_ctx) == kOtbnOk);
+  CHECK(dif_otbn_control_software_errs_fatal(&otbn_ctx->dif, false) ==
+        kDifLocked);
   CHECK(otbn_busy_wait_for_done(otbn_ctx) == kOtbnOk);
 
   // Reading back result (c).
@@ -130,10 +133,12 @@ static void test_barrett384(otbn_t *otbn_ctx) {
 static void test_err_test(otbn_t *otbn_ctx) {
   CHECK(otbn_load_app(otbn_ctx, kAppErrTest) == kOtbnOk);
 
+  CHECK(dif_otbn_control_software_errs_fatal(&otbn_ctx->dif, true) == kDifOk);
   CHECK(otbn_execute(otbn_ctx) == kOtbnOk);
   CHECK(otbn_busy_wait_for_done(otbn_ctx) == kOtbnOperationFailed);
 
-  check_otbn_err_bits(otbn_ctx, kDifOtbnErrBitsBadDataAddr);
+  check_otbn_err_bits(
+      otbn_ctx, kDifOtbnErrBitsFatalSoftware | kDifOtbnErrBitsBadDataAddr);
 
   check_otbn_insn_cnt(otbn_ctx, 1);
 }
