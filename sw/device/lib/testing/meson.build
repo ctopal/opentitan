@@ -10,6 +10,19 @@ sw_lib_testing_rand_testutils = declare_dependency(
   ),
 )
 
+sw_lib_testing_aes_testutils = declare_dependency(
+  link_with: static_library(
+    'sw_lib_testing_aes_testutils',
+    sources: [
+      'aes_testutils.c'
+    ],
+    dependencies: [
+      sw_lib_dif_aes,
+      sw_lib_runtime_ibex,
+    ],
+  ),
+)
+
 # aon_timer test utilities.
 sw_lib_testing_aon_timer_testutils = declare_dependency(
   link_with: static_library(
@@ -21,6 +34,20 @@ sw_lib_testing_aon_timer_testutils = declare_dependency(
       sw_lib_mmio,
       sw_lib_dif_aon_timer,
       top_earlgrey,
+    ],
+  ),
+)
+
+sw_lib_testing_clkmgr_testutils = declare_dependency(
+  link_with: static_library(
+    'sw_lib_testing_clkmgr_testutils',
+    sources: [
+      hw_ip_clkmgr_reg_h,
+      'clkmgr_testutils.c'
+    ],
+    dependencies: [
+      sw_lib_dif_clkmgr,
+      sw_lib_runtime_ibex,
     ],
   ),
 )

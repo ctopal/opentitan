@@ -10,12 +10,16 @@
 // The top level flash_phy is only responsible for dispatching transactions and
 // correctly collecting the responses in order.
 
-module flash_phy import flash_ctrl_pkg::*; (
+module flash_phy
+  import flash_ctrl_pkg::*;
+  import prim_mubi_pkg::mubi4_e;
+
+(
   input clk_i,
   input rst_ni,
   input host_req_i,
   input host_intg_err_i,
-  input tlul_pkg::tl_type_e host_req_type_i,
+  input mubi4_e host_instr_type_i,
   input [BusAddrW-1:0] host_addr_i,
   output logic host_req_rdy_o,
   output logic host_req_done_o,
@@ -164,16 +168,18 @@ module flash_phy import flash_ctrl_pkg::*; (
   assign flash_ctrl_o.ecc_single_err = ecc_single_err;
   assign flash_ctrl_o.ecc_addr = ecc_addr;
 
-  lc_ctrl_pkg::lc_tx_t [NumBanks-1:0] flash_disable;
-  prim_lc_sync #(
-    .NumCopies(NumBanks),
-    .AsyncOn(0)
-  ) u_flash_disable_sync (
-    .clk_i('0),
-    .rst_ni('0),
-    .lc_en_i(flash_ctrl_i.flash_disable),
-    .lc_en_o(flash_disable)
-  );
+  logic [NumBanks-1:0][prim_mubi_pkg::MuBi4Width-1:0] flash_disable_raw;
+  prim_mubi_pkg::mubi4_t [NumBanks-1:0] flash_disable;
+
+  for (genvar i=0; i < NumBanks; i++) begin : gen_flash_disable_buf
+    prim_buf #(
+      .Width(prim_mubi_pkg::MuBi4Width)
+    ) u_flash_disable_buf (
+      .in_i(flash_ctrl_i.flash_disable),
+      .out_o(flash_disable_raw[i])
+    );
+    assign flash_disable[i] = prim_mubi_pkg::mubi4_t'(flash_disable_raw[i]);
+  end
 
   for (genvar bank = 0; bank < NumBanks; bank++) begin : gen_flash_cores
 
@@ -217,7 +223,7 @@ module flash_phy import flash_ctrl_pkg::*; (
       // host request must be suppressed if response fifo cannot hold more
       // otherwise the flash_phy_core and flash_phy will get out of sync
       .host_req_i(host_req),
-      .host_req_type_i,
+      .host_instr_type_i,
       .host_scramble_en_i(host_scramble_en),
       .host_ecc_en_i(host_ecc_en),
       .host_addr_i(host_addr_i[0 +: BusBankAddrW]),

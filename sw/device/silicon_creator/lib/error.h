@@ -40,6 +40,7 @@ enum module_ {
   kModuleSecMmio =      MODULE_CODE('I', 'O'),
   kModuleBootPolicy =   MODULE_CODE('B', 'P'),
   kModuleRetSram =      MODULE_CODE('R', 'S'),
+  KModuleBootstrap =    MODULE_CODE('B', 'S'),
   // clang-format on
 };
 
@@ -92,7 +93,7 @@ enum module_ {
   X(kErrorOtbnInvalidArgument,        ERROR_(1, kModuleOtbn, kInvalidArgument)), \
   X(kErrorOtbnBadOffsetLen,           ERROR_(2, kModuleOtbn, kInvalidArgument)), \
   X(kErrorOtbnExecutionFailed,        ERROR_(3, kModuleOtbn, kInternal)), \
-  X(kErrorOtbnNoChange,               ERROR_(4, kModuleOtbn, kFailedPrecondition)), \
+  X(kErrorOtbnUnavailable,            ERROR_(4, kModuleOtbn, kFailedPrecondition)), \
   X(kErrorFlashCtrlInvalidArgument,   ERROR_(1, kModuleFlashCtrl, kInvalidArgument)), \
   X(kErrorFlashCtrlBusy,              ERROR_(2, kModuleFlashCtrl, kUnavailable)), \
   X(kErrorSecMmioRegFileSize,         ERROR_(0, kModuleSecMmio, kResourceExhausted)), \
@@ -105,6 +106,13 @@ enum module_ {
   X(kErrorBootPolicyBadIdentifier,    ERROR_(1, kModuleBootPolicy, kInternal)), \
   X(kErrorBootPolicyRollback,         ERROR_(2, kModuleBootPolicy, kInternal)), \
   X(kErrorRetSramLocked,              ERROR_(1, kModuleRetSram, kInternal)), \
+  X(kErrorBootstrapSpiDevice,         ERROR_(1, KModuleBootstrap, kInternal)), \
+  X(kErrorBootstrapErase,             ERROR_(2, KModuleBootstrap, kInternal)), \
+  X(kErrorBootstrapEraseCheck,        ERROR_(3, KModuleBootstrap, kInternal)), \
+  X(kErrorBootstrapEraseExit,         ERROR_(4, KModuleBootstrap, kInternal)), \
+  X(kErrorBootstrapWrite,             ERROR_(5, KModuleBootstrap, kInternal)), \
+  X(kErrorBootstrapGpio,              ERROR_(6, KModuleBootstrap, kInternal)), \
+  X(kErrorBootstrapUnknown,           ERROR_(7, KModuleBootstrap, kInternal)), \
   X(kErrorUnknown, 0xFFFFFFFF)
 // clang-format on
 

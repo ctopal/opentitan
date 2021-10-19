@@ -98,7 +98,8 @@ module otbn_top_sim (
 
     .bus_intg_violation_i   ( 1'b0             ),
     .illegal_bus_access_i   ( 1'b0             ),
-    .lifecycle_escalation_i ( 1'b0             )
+    .lifecycle_escalation_i ( 1'b0             ),
+    .software_errs_fatal_i  ( 1'b0             )
   );
 
   // The top bits of IMEM rdata aren't currently used (they will eventually be used for integrity
@@ -281,9 +282,9 @@ module otbn_top_sim (
 
   localparam string DesignScope = "..u_otbn_core";
 
-  logic      otbn_model_done;
   err_bits_t otbn_model_err_bits;
   bit [31:0] otbn_model_insn_cnt;
+  bit        otbn_model_done_r;
   bit        otbn_model_err;
 
   otbn_core_model #(
@@ -298,7 +299,6 @@ module otbn_top_sim (
     .rst_edn_ni            ( IO_RST_N ),
 
     .start_i               ( otbn_start ),
-    .done_o                ( otbn_model_done ),
 
     .err_bits_o            ( otbn_model_err_bits ),
 
@@ -306,8 +306,12 @@ module otbn_top_sim (
     .edn_rnd_cdc_done_i    ( edn_rnd_data_valid ),
     .edn_urnd_data_valid_i ( edn_urnd_data_valid ),
 
-    .status_o              (),
+    .status_o              ( ),
     .insn_cnt_o            ( otbn_model_insn_cnt ),
+
+    .invalidate_imem_i     ( 1'b0 ),
+
+    .done_r_o              ( otbn_model_done_r ),
 
     .err_o                 ( otbn_model_err )
   );
@@ -322,12 +326,17 @@ module otbn_top_sim (
       cnt_mismatch_latched      <= 1'b0;
       model_err_latched         <= 1'b0;
     end else begin
-      if (otbn_done_q != otbn_model_done) begin
-        $display("ERROR: At time %0t, otbn_done_q != otbn_model_done (%0d != %0d).",
-                 $time, otbn_done_q, otbn_model_done);
+      // Check that the 'done_o' output from the RTL matches the 'done_r_o' output from the model
+      // (with one cycle delay).
+      if (otbn_done_q && !otbn_model_done_r) begin
+        $display("ERROR: At time %0t, RTL done on previous cycle, but model still busy.", $time);
         done_mismatch_latched <= 1'b1;
       end
-      if (otbn_done_q && otbn_model_done) begin
+      if (otbn_model_done_r && !otbn_done_q) begin
+        $display("ERROR: At time %0t, model finished, but RTL not done in time.", $time);
+        done_mismatch_latched <= 1'b1;
+      end
+      if (otbn_model_done_r && otbn_done_q) begin
         if (otbn_err_bits_q != otbn_model_err_bits) begin
           $display("ERROR: At time %0t, otbn_err_bits != otbn_model_err_bits (0x%0x != 0x%0x).",
                    $time, otbn_err_bits_q, otbn_model_err_bits);
@@ -363,16 +372,26 @@ module otbn_top_sim (
   end
 
   // Defined in otbn_top_sim.cc
-  import "DPI-C" context function int OtbnTopApplyLoopWarp();
+  import "DPI-C" context function int OtbnTopInstallLoopWarps();
+  import "DPI-C" context function void OtbnTopApplyLoopWarp();
+  bit warps_installed;
 
   always_ff @(negedge IO_CLK or negedge IO_RST_N) begin
     if (!IO_RST_N) begin
-      loop_warp_model_err <= 1'b0;
+      warps_installed <= 1'b0;
     end else begin
-      if (OtbnTopApplyLoopWarp() != 0) begin
-        $display("ERROR: At time %0t, OtbnTopApplyLoopWarp() failed.", $time);
-        loop_warp_model_err <= 1'b1;
+      if (!warps_installed) begin
+        if (OtbnTopInstallLoopWarps() != 0) begin
+          $display("ERROR: At time %0t, OtbnTopInstallLoopWarps() failed.", $time);
+          loop_warp_model_err <= 1'b1;
+        end
       end
+      warps_installed <= 1'b1;
+    end
+  end
+  always_ff @(posedge IO_CLK or negedge IO_RST_N) begin
+    if (IO_RST_N) begin
+      OtbnTopApplyLoopWarp();
     end
   end
 

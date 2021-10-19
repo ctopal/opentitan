@@ -8,7 +8,7 @@ filesets:
   files_rtl_generic:
     depend:
       - lowrisc:ip:uart:0.1
-      - lowrisc:ip:alert_handler
+      - lowrisc:opentitan:top_earlgrey_alert_handler
       - lowrisc:ip:gpio
       - lowrisc:ip:rv_core_ibex
       - lowrisc:ip:rv_dm
@@ -52,6 +52,7 @@ filesets:
       - lowrisc:tlul:headers
       - lowrisc:prim:all
       - lowrisc:prim:usb_diff_rx
+      - lowrisc:prim:mubi
       - lowrisc:systems:top_earlgrey_pkg
     files:
       - rtl/autogen/top_earlgrey_rnd_cnst_pkg.sv

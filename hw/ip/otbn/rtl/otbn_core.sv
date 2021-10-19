@@ -75,7 +75,10 @@ module otbn_core
   input  logic                    illegal_bus_access_i,
 
   // Indicates an incoming escalation from the life cycle manager. Results in a fatal error.
-  input  logic                    lifecycle_escalation_i
+  input  logic                    lifecycle_escalation_i,
+
+  // When set software errors become fatal errors.
+  input  logic                    software_errs_fatal_i
 );
   // Fetch request (the next instruction)
   logic [ImemAddrWidth-1:0] insn_fetch_req_addr;
@@ -354,7 +357,8 @@ module otbn_core
     .insn_cnt_o         (insn_cnt),
     .bus_intg_violation_i,
     .illegal_bus_access_i,
-    .lifecycle_escalation_i
+    .lifecycle_escalation_i,
+    .software_errs_fatal_i
   );
 
   assign insn_cnt_o = insn_cnt;
@@ -520,6 +524,21 @@ module otbn_core
 
   // Asserts =======================================================================================
 
-  `ASSERT(edn_req_stable, edn_rnd_req_o & ~edn_rnd_ack_i |=> edn_rnd_req_o)
+  // All outputs should be known.
   `ASSERT_KNOWN(DoneOKnown_A, done_o)
+  `ASSERT_KNOWN(ImemReqOKnown_A, imem_req_o)
+  `ASSERT_KNOWN(ImemAddrOKnown_A, imem_addr_o)
+  `ASSERT_KNOWN(ImemWdataOKnown_A, imem_wdata_o)
+  `ASSERT_KNOWN(DmemReqOKnown_A, dmem_req_o)
+  `ASSERT_KNOWN_IF(DmemWriteOKnown_A, dmem_write_o, dmem_req_o)
+  `ASSERT_KNOWN_IF(DmemAddrOKnown_A, dmem_addr_o, dmem_req_o)
+  `ASSERT_KNOWN_IF(DmemWdataOKnown_A, dmem_wdata_o, dmem_req_o)
+  `ASSERT_KNOWN_IF(DmemRmaskOKnown_A, dmem_rmask_o, dmem_req_o)
+  `ASSERT_KNOWN(EdnRndReqOKnown_A, edn_rnd_req_o)
+  `ASSERT_KNOWN(EdnUrndReqOKnown_A, edn_urnd_req_o)
+  `ASSERT_KNOWN(InsnCntOKnown_A, insn_cnt_o)
+
+  // Keep the EDN requests active until they are acknowledged.
+  `ASSERT(EdnRndReqStable_A, edn_rnd_req_o & ~edn_rnd_ack_i |=> edn_rnd_req_o)
+  `ASSERT(EdnUrndReqStable_A, edn_urnd_req_o & ~edn_urnd_ack_i |=> edn_urnd_req_o)
 endmodule

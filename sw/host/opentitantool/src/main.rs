@@ -12,10 +12,13 @@ use opentitanlib::app::command::CommandDispatch;
 
 #[derive(Debug, StructOpt, CommandDispatch)]
 enum RootCommandHierarchy {
+    // Not flattened because `Bootstrap` is a leaf command.
+    Bootstrap(command::bootstrap::BootstrapCommand),
     // Not flattened because `Console` is a leaf command.
     Console(command::console::Console),
 
     Gpio(command::gpio::GpioCommand),
+    LoadBitstream(command::load_bitstream::LoadBitstream),
     Spi(command::spi::SpiCommand),
 
     // Flattened because `Greetings` is a subcommand hierarchy.

@@ -143,6 +143,23 @@ sw_tests += {
   }
 }
 
+rstmgr_sw_req_test_lib = declare_dependency(
+  link_with: static_library(
+    'rstmgr_sw_req_lib',
+    sources: ['rstmgr_sw_req_test.c'],
+    dependencies: [
+      sw_lib_dif_rstmgr,
+      sw_lib_mmio,
+      sw_lib_runtime_hart,
+    ],
+  ),
+)
+sw_tests += {
+  'rstmgr_sw_req_test': {
+    'library': rstmgr_sw_req_test_lib,
+  }
+}
+
 otbn_smoketest_lib = declare_dependency(
   link_with: static_library(
     'otbn_smoketest_lib',
@@ -249,6 +266,23 @@ csrng_smoketest_lib = declare_dependency(
 sw_tests += {
   'csrng_smoketest': {
     'library': csrng_smoketest_lib,
+  }
+}
+
+entropy_src_fw_ovr_test_lib = declare_dependency(
+  link_with: static_library(
+    'entropy_src_fw_ovr_test_lib',
+    sources: ['entropy_src_fw_ovr_test.c'],
+    dependencies: [
+      sw_lib_dif_entropy_src,
+      sw_lib_mmio,
+      sw_lib_runtime_log,
+    ],
+  ),
+)
+sw_tests += {
+  'entropy_src_fw_ovr_test': {
+    'library': entropy_src_fw_ovr_test_lib,
   }
 }
 
@@ -646,16 +680,6 @@ foreach sw_test_name, sw_test_info : sw_tests
     )
   endforeach
 endforeach
-
-# Signing keys for ROM_EXT images.
-signing_keys = {
-  'fpga_key_0': {
-    'path': meson.source_root() / 'sw/device/silicon_creator/keys/fpga_key_0.private.der',
-  },
-  'fpga_key_1': {
-    'path': meson.source_root() / 'sw/device/silicon_creator/keys/fpga_key_1.private.der',
-  },
-}
 
 # (signed) test binaries loaded with ROM from sw/device/silicon_creator/
 foreach sw_test_name, sw_test_info : sw_rom_ext_tests

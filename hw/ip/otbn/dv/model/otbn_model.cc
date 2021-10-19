@@ -87,16 +87,6 @@ static void write_vector_to_file(const std::string &path,
   }
 }
 
-// Extract 256-bit RND EDN data from a 4 state logic value. RND data is placed
-// into 8 element uint32_t array dst.
-static void set_rnd_data(uint32_t dst[8], const svLogicVecVal src[8]) {
-  for (int i = 0; i < 8; ++i) {
-    // All bits should be known
-    assert(src[i].bval == 0);
-    dst[i] = src[i].aval;
-  }
-}
-
 static bool is_xz(svLogic l) { return l == sv_x || l == sv_z; }
 
 template <typename T>
@@ -374,6 +364,21 @@ int OtbnModel::load_dmem() {
   return 0;
 }
 
+int OtbnModel::invalidate_imem() {
+  ISSWrapper *iss = ensure_wrapper();
+  if (!iss)
+    return -1;
+
+  try {
+    iss->invalidate_imem();
+  } catch (const std::exception &err) {
+    std::cerr << "Error when invalidating IMEM in ISS: " << err.what() << "\n";
+    return -1;
+  }
+
+  return 0;
+}
+
 void OtbnModel::reset() {
   ISSWrapper *iss = iss_.get();
   if (iss)
@@ -641,6 +646,11 @@ unsigned otbn_model_step(OtbnModel *model, svLogic start, unsigned model_state,
   }
 
   return model_state;
+}
+
+int otbn_model_invalidate_imem(OtbnModel *model) {
+  assert(model);
+  return model->invalidate_imem();
 }
 
 void otbn_model_reset(OtbnModel *model) {

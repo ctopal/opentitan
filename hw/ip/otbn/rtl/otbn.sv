@@ -93,6 +93,8 @@ module otbn
 
   err_bits_t err_bits;
 
+  logic software_errs_fatal_q, software_errs_fatal_d;
+
   otbn_reg2hw_t reg2hw;
   otbn_hw2reg_t hw2reg;
 
@@ -283,6 +285,7 @@ module otbn
   // Always grant to bus accesses, when OTBN is running a dummy response is returned
   assign imem_gnt_bus = imem_req_bus;
 
+  import prim_mubi_pkg::MuBi4False;
   tlul_adapter_sram #(
     .SramAw      (ImemIndexWidth),
     .SramDw      (32),
@@ -295,7 +298,7 @@ module otbn
     .rst_ni      (rst_n                  ),
     .tl_i        (tl_win_h2d[TlWinImem]  ),
     .tl_o        (tl_win_d2h[TlWinImem]  ),
-    .en_ifetch_i (tlul_pkg::InstrDis     ),
+    .en_ifetch_i (MuBi4False             ),
     .req_o       (imem_req_bus           ),
     .req_type_o  (                       ),
     .gnt_i       (imem_gnt_bus           ),
@@ -493,7 +496,7 @@ module otbn
     .rst_ni      (rst_n                  ),
     .tl_i        (tl_win_h2d[TlWinDmem]  ),
     .tl_o        (tl_win_d2h[TlWinDmem]  ),
-    .en_ifetch_i (tlul_pkg::InstrDis     ),
+    .en_ifetch_i (MuBi4False             ),
     .req_o       (dmem_req_bus           ),
     .req_type_o  (                       ),
     .gnt_i       (dmem_gnt_bus           ),
@@ -594,7 +597,20 @@ module otbn
 
   `ASSERT(OtbnStatesOneHot, $onehot0({busy_execute_q, locked}))
 
-  assign hw2reg.ctrl.d = 1'b0;
+  // CTRL register
+  assign software_errs_fatal_d =
+    reg2hw.ctrl.qe && (hw2reg.status.d == StatusIdle) ? reg2hw.ctrl.q :
+                                                        software_errs_fatal_q;
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      software_errs_fatal_q <= 1'b0;
+    end else begin
+      software_errs_fatal_q <= software_errs_fatal_d;
+    end
+  end
+
+  assign hw2reg.ctrl.d = software_errs_fatal_q;
 
   // ERR_BITS register
   // The error bits for an OTBN operation get stored on the cycle that done is
@@ -633,7 +649,7 @@ module otbn
   assign hw2reg.err_bits.lifecycle_escalation.d = err_bits.lifecycle_escalation;
 
   assign hw2reg.err_bits.fatal_software.de = done;
-  assign hw2reg.err_bits.fatal_software.d = 1'b0;
+  assign hw2reg.err_bits.fatal_software.d = err_bits.fatal_software;
 
   // FATAL_ALERT_CAUSE register. The .de and .d values are equal for each bit, so that it can only
   // be set, not cleared.
@@ -650,8 +666,8 @@ module otbn
   assign hw2reg.fatal_alert_cause.illegal_bus_access.d  = illegal_bus_access_d;
   assign hw2reg.fatal_alert_cause.lifecycle_escalation.de = lifecycle_escalation;
   assign hw2reg.fatal_alert_cause.lifecycle_escalation.d  = lifecycle_escalation;
-  assign hw2reg.fatal_alert_cause.fatal_software.de = 0;
-  assign hw2reg.fatal_alert_cause.fatal_software.d  = 0;
+  assign hw2reg.fatal_alert_cause.fatal_software.de = done;
+  assign hw2reg.fatal_alert_cause.fatal_software.d  = err_bits.fatal_software;
 
   // INSN_CNT register
   logic [31:0] insn_cnt;
@@ -670,7 +686,8 @@ module otbn
                               dmem_rerror          |
                               bus_intg_violation   |
                               illegal_bus_access_d |
-                              lifecycle_escalation;
+                              lifecycle_escalation |
+                              err_bits.fatal_software;
 
   assign alerts[AlertRecov] = 1'b0; // TODO: Implement
 
@@ -756,7 +773,7 @@ module otbn
     end
 
     // Mux between model and RTL implementation at runtime.
-    logic         done_model, done_rtl;
+    logic         done_r_model, done_rtl;
     logic         locked_model, locked_rtl;
     logic         start_model, start_rtl;
     err_bits_t    err_bits_model, err_bits_rtl;
@@ -764,7 +781,9 @@ module otbn
     logic         edn_rnd_data_valid;
     logic         edn_urnd_data_valid;
 
-    assign done = otbn_use_model ? done_model : done_rtl;
+    // Note that the "done" signal will come a cycle later when using the model as a core than it
+    // does when using the RTL
+    assign done = otbn_use_model ? done_r_model : done_rtl;
     assign locked = otbn_use_model ? locked_model : locked_rtl;
     assign err_bits = otbn_use_model ? err_bits_model : err_bits_rtl;
     assign insn_cnt = otbn_use_model ? insn_cnt_model : insn_cnt_rtl;
@@ -788,7 +807,6 @@ module otbn
       .rst_edn_ni,
 
       .start_i               (start_model),
-      .done_o                (done_model),
 
       .err_bits_o            (err_bits_model),
 
@@ -798,6 +816,8 @@ module otbn
       .edn_urnd_data_valid_i (edn_urnd_data_valid),
 
       .insn_cnt_o            (insn_cnt_model),
+
+      .done_r_o (done_r_model),
 
       .err_o ()
     );
@@ -850,7 +870,9 @@ module otbn
 
       .bus_intg_violation_i   (bus_intg_violation),
       .illegal_bus_access_i   (illegal_bus_access_q),
-      .lifecycle_escalation_i (lifecycle_escalation)
+      .lifecycle_escalation_i (lifecycle_escalation),
+
+      .software_errs_fatal_i  (software_errs_fatal_q)
     );
   `else
     otbn_core #(
@@ -898,7 +920,9 @@ module otbn
 
       .bus_intg_violation_i   (bus_intg_violation),
       .illegal_bus_access_i   (illegal_bus_access_q),
-      .lifecycle_escalation_i (lifecycle_escalation)
+      .lifecycle_escalation_i (lifecycle_escalation),
+
+      .software_errs_fatal_i  (software_errs_fatal_q)
     );
   `endif
 
@@ -912,10 +936,19 @@ module otbn
   `ASSERT_KNOWN(TlODValidKnown_A, tl_o.d_valid)
   `ASSERT_KNOWN(TlOAReadyKnown_A, tl_o.a_ready)
   `ASSERT_KNOWN(IdleOKnown_A, idle_o)
-  `ASSERT_KNOWN(IdleOtpOKnown_A, idle_otp_o)
+  `ASSERT_KNOWN(IdleOtpOKnown_A, idle_otp_o, clk_otp_i, !rst_otp_ni)
   `ASSERT_KNOWN(IntrDoneOKnown_A, intr_done_o)
   `ASSERT_KNOWN(AlertTxOKnown_A, alert_tx_o)
-  `ASSERT_KNOWN(EdnRndOKnown_A, edn_rnd_o)
-  `ASSERT_KNOWN(EdnUrndOKnown_A, edn_urnd_o)
+  `ASSERT_KNOWN(EdnRndOKnown_A, edn_rnd_o, clk_edn_i, !rst_edn_ni)
+  `ASSERT_KNOWN(EdnUrndOKnown_A, edn_urnd_o, clk_edn_i, !rst_edn_ni)
+  `ASSERT_KNOWN(OtbnOtpKeyO_A, otbn_otp_key_o, clk_otp_i, !rst_otp_ni)
+
+  // In locked state, the readable registers INSN_CNT, IMEM, and DMEM are expected to always read 0
+  // when accessed from the bus.
+  `ASSERT(LockedInsnCntReadsZero_A, (hw2reg.status.d == StatusLocked) |-> insn_cnt == 'd0)
+  `ASSERT(NonIdleImemReadsZero_A,
+      (hw2reg.status.d != StatusIdle) & imem_rvalid_bus |-> imem_rdata_bus == 'd0)
+  `ASSERT(NonIdleDmemReadsZero_A,
+      (hw2reg.status.d != StatusIdle) & dmem_rvalid_bus |-> dmem_rdata_bus == 'd0)
 
 endmodule

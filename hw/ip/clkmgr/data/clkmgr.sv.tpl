@@ -72,6 +72,9 @@
 
 );
 
+  import prim_mubi_pkg::MuBi4False;
+  import prim_mubi_pkg::MuBi4True;
+
   ////////////////////////////////////////////////////
   // Divided clocks
   ////////////////////////////////////////////////////
@@ -142,9 +145,15 @@
     reg2hw.alert_test.recov_fault.q & reg2hw.alert_test.recov_fault.qe
   };
 
+  logic recov_alert;
+  assign recov_alert =
+% for src in typed_clocks.rg_srcs:
+    hw2reg.recov_err_code.${src}_measure_err.de${";" if loop.last else " |"}
+% endfor
+
   assign alerts = {
     |reg2hw.fatal_err_code,
-    |reg2hw.recov_err_code
+    recov_alert
   };
 
   localparam logic [NumAlerts-1:0] AlertFatal = {1'b1, 1'b0};
@@ -198,7 +207,7 @@
   );
 
   // clock gated indication for alert handler: these clocks are never gated.
-  assign cg_en_o.${k.split('clk_')[-1]} = lc_ctrl_pkg::Off;
+  assign cg_en_o.${k.split('clk_')[-1]} = MuBi4False;
 % endfor
 
   ////////////////////////////////////////////////////
@@ -351,11 +360,13 @@
   assign clocks_o.${k} = clk_${v.src.name}_root;
 
   // clock gated indication for alert handler
-  prim_lc_sender u_prim_lc_sender_${k} (
+  prim_mubi4_sender #(
+    .ResetValue(MuBi4True)
+  ) u_prim_mubi4_sender_${k} (
     .clk_i(clk_${v.src.name}_i),
     .rst_ni(rst_${v.src.name}_ni),
-    .lc_en_i(((clk_${v.src.name}_en) ? lc_ctrl_pkg::Off : lc_ctrl_pkg::On)),
-    .lc_en_o(cg_en_o.${k.split('clk_')[-1]})
+    .mubi_i(((clk_${v.src.name}_en) ? MuBi4False : MuBi4True)),
+    .mubi_o(cg_en_o.${k.split('clk_')[-1]})
   );
 % endfor
 
@@ -400,13 +411,13 @@
   );
 
   // clock gated indication for alert handler
-  prim_lc_sender #(
-    .ResetValueIsOn(1)
-  ) u_prim_lc_sender_${k} (
+  prim_mubi4_sender #(
+    .ResetValue(MuBi4True)
+  ) u_prim_mubi4_sender_${k} (
     .clk_i(clk_${v.src.name}_i),
     .rst_ni(rst_${v.src.name}_ni),
-    .lc_en_i(((${k}_combined_en) ? lc_ctrl_pkg::Off : lc_ctrl_pkg::On)),
-    .lc_en_o(cg_en_o.${k.split('clk_')[-1]})
+    .mubi_i(((${k}_combined_en) ? MuBi4False : MuBi4True)),
+    .mubi_o(cg_en_o.${k.split('clk_')[-1]})
   );
 
 % endfor
@@ -463,13 +474,13 @@
   );
 
   // clock gated indication for alert handler
-  prim_lc_sender #(
-    .ResetValueIsOn(1)
-  ) u_prim_lc_sender_${clk} (
+  prim_mubi4_sender #(
+    .ResetValue(MuBi4True)
+  ) u_prim_mubi4_sender_${clk} (
     .clk_i(clk_${sig.src.name}_i),
     .rst_ni(rst_${sig.src.name}_ni),
-    .lc_en_i(((${clk}_combined_en) ? lc_ctrl_pkg::Off : lc_ctrl_pkg::On)),
-    .lc_en_o(cg_en_o.${clk.split('clk_')[-1]})
+    .mubi_i(((${clk}_combined_en) ? MuBi4False : MuBi4True)),
+    .mubi_o(cg_en_o.${clk.split('clk_')[-1]})
   );
 
 % endfor

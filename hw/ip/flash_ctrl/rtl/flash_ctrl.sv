@@ -83,6 +83,7 @@ module flash_ctrl
 );
 
   import flash_ctrl_reg_pkg::*;
+  import prim_mubi_pkg::mubi4_e;
 
   flash_ctrl_core_reg2hw_t reg2hw;
   flash_ctrl_core_hw2reg_t hw2reg;
@@ -258,9 +259,6 @@ module flash_ctrl
 
   // life cycle connections
   lc_ctrl_pkg::lc_tx_t lc_seed_hw_rd_en;
-
-  // flash functional disable
-  lc_ctrl_pkg::lc_tx_t flash_disable;
 
   prim_lc_sync #(
     .NumCopies(1)
@@ -464,7 +462,7 @@ module flash_ctrl
     .rst_ni,
     .tl_i        (tl_win_h2d[0]),
     .tl_o        (tl_win_d2h[0]),
-    .en_ifetch_i (tlul_pkg::InstrDis),
+    .en_ifetch_i (prim_mubi_pkg::MuBi4False),
     .req_o       (sw_wvalid),
     .req_type_o  (),
     .gnt_i       (sw_wready),
@@ -553,7 +551,7 @@ module flash_ctrl
     .rst_ni,
     .tl_i        (tl_win_h2d[1]),
     .tl_o        (tl_win_d2h[1]),
-    .en_ifetch_i (tlul_pkg::InstrDis),
+    .en_ifetch_i (prim_mubi_pkg::MuBi4False),
     .req_o       (rd_fifo_ren),
     .req_type_o  (),
     .gnt_i       (rd_fifo_rvalid),
@@ -845,10 +843,8 @@ module flash_ctrl
   end
 
   //////////////////////////////////////
-  // Flash Disable
+  // Flash Disable and execute enable
   //////////////////////////////////////
-  assign flash_disable = reg2hw.flash_disable.q ? lc_ctrl_pkg::On :
-                         fatal_err              ? lc_ctrl_pkg::On : lc_ctrl_pkg::Off;
 
   lc_ctrl_pkg::lc_tx_t lc_escalate_en;
   prim_lc_sync #(
@@ -860,13 +856,22 @@ module flash_ctrl
     .lc_en_o(lc_escalate_en)
   );
 
-  assign flash_phy_req.flash_disable = flash_disable | lc_escalate_en;
+  // flash functional disable
+  prim_mubi_pkg::mubi4_t flash_disable;
+  assign flash_disable = lc_escalate_en == lc_ctrl_pkg::On ?
+                         prim_mubi_pkg::MuBi4True :
+                         prim_mubi_pkg::mubi4_e'(reg2hw.dis.q);
+
+  assign flash_phy_req.flash_disable = flash_disable;
+
+  prim_mubi_pkg::mubi4_t flash_exec_en;
+  assign flash_exec_en = lc_escalate_en == lc_ctrl_pkg::On ?
+                         prim_mubi_pkg::MuBi4False :
+                         prim_mubi_pkg::mubi4_e'(reg2hw.exec.q);
 
   //////////////////////////////////////
   // Errors and Interrupts
   //////////////////////////////////////
-
-
 
   // all software interface errors are treated as synchronous errors
   assign hw2reg.err_code.oob_err.d        = 1'b1;
@@ -1063,11 +1068,12 @@ module flash_ctrl
   assign unused_higher_addr_bits = muxed_addr[top_pkg::TL_AW-1:BusAddrW];
   assign unused_scratch = reg2hw.scratch;
 
+
   //////////////////////////////////////
   // flash phy module
   //////////////////////////////////////
   logic flash_host_req;
-  tlul_pkg::tl_type_e flash_host_req_type;
+  mubi4_e flash_host_instr_type;
   logic flash_host_req_rdy;
   logic flash_host_req_done;
   logic flash_host_rderr;
@@ -1089,10 +1095,9 @@ module flash_ctrl
     .rst_ni,
     .tl_i        (mem_tl_i),
     .tl_o        (mem_tl_o),
-    // tie this to secure boot, see #7834
-    .en_ifetch_i (tlul_pkg::InstrEn),
+    .en_ifetch_i (flash_exec_en),
     .req_o       (flash_host_req),
-    .req_type_o  (flash_host_req_type),
+    .req_type_o  (flash_host_instr_type),
     .gnt_i       (flash_host_req_rdy),
     .we_o        (),
     .addr_o      (flash_host_addr),
@@ -1109,7 +1114,7 @@ module flash_ctrl
     .rst_ni,
     .host_req_i        (flash_host_req),
     .host_intg_err_i   (flash_host_intg_err),
-    .host_req_type_i   (flash_host_req_type),
+    .host_instr_type_i (flash_host_instr_type),
     .host_addr_i       (flash_host_addr),
     .host_req_rdy_o    (flash_host_req_rdy),
     .host_req_done_o   (flash_host_req_done),

@@ -391,13 +391,13 @@ module top_earlgrey #(
   logic intr_uart3_rx_timeout;
   logic intr_uart3_rx_parity_err;
   logic [31:0] intr_gpio_gpio;
-  logic intr_spi_device_rxf;
-  logic intr_spi_device_rxlvl;
-  logic intr_spi_device_txlvl;
-  logic intr_spi_device_rxerr;
-  logic intr_spi_device_rxoverflow;
-  logic intr_spi_device_txunderflow;
-  logic intr_spi_device_tpm_cmdaddr_notempty;
+  logic intr_spi_device_rx_full;
+  logic intr_spi_device_rx_watermark;
+  logic intr_spi_device_tx_watermark;
+  logic intr_spi_device_rx_error;
+  logic intr_spi_device_rx_overflow;
+  logic intr_spi_device_tx_underflow;
+  logic intr_spi_device_tpm_header_not_empty;
   logic intr_spi_host0_error;
   logic intr_spi_host0_spi_event;
   logic intr_spi_host1_error;
@@ -600,6 +600,7 @@ module top_earlgrey #(
   spi_device_pkg::passthrough_req_t       spi_device_passthrough_req;
   spi_device_pkg::passthrough_rsp_t       spi_device_passthrough_rsp;
   logic       rv_dm_ndmreset_req;
+  prim_mubi_pkg::mubi4_t       rstmgr_aon_sw_rst_req;
   logic [5:0] pwrmgr_aon_wakeups;
   logic [1:0] pwrmgr_aon_rstreqs;
   tlul_pkg::tl_h2d_t       main_tl_rv_core_ibex__corei_req;
@@ -718,9 +719,9 @@ module top_earlgrey #(
   jtag_pkg::jtag_req_t       pinmux_aon_dft_jtag_req;
   jtag_pkg::jtag_rsp_t       pinmux_aon_dft_jtag_rsp;
   otp_ctrl_part_pkg::otp_hw_cfg_t       otp_ctrl_otp_hw_cfg;
-  otp_ctrl_pkg::otp_en_t       csrng_otp_en_csrng_sw_app_read;
-  otp_ctrl_pkg::otp_en_t       entropy_src_otp_en_entropy_src_fw_read;
-  otp_ctrl_pkg::otp_en_t       entropy_src_otp_en_entropy_src_fw_over;
+  prim_mubi_pkg::mubi8_t       csrng_otp_en_csrng_sw_app_read;
+  prim_mubi_pkg::mubi8_t       entropy_src_otp_en_entropy_src_fw_read;
+  prim_mubi_pkg::mubi8_t       entropy_src_otp_en_entropy_src_fw_over;
   otp_ctrl_pkg::otp_device_id_t       lc_ctrl_otp_device_id;
   otp_ctrl_pkg::otp_manuf_state_t       lc_ctrl_otp_manuf_state;
   otp_ctrl_pkg::otp_device_id_t       keymgr_otp_device_id;
@@ -760,9 +761,12 @@ module top_earlgrey #(
   // OTP HW_CFG Broadcast signals.
   // TODO(#6713): The actual struct breakout and mapping currently needs to
   // be performed by hand.
-  assign csrng_otp_en_csrng_sw_app_read = otp_ctrl_otp_hw_cfg.data.en_csrng_sw_app_read;
-  assign entropy_src_otp_en_entropy_src_fw_read = otp_ctrl_otp_hw_cfg.data.en_entropy_src_fw_read;
-  assign entropy_src_otp_en_entropy_src_fw_over = otp_ctrl_otp_hw_cfg.data.en_entropy_src_fw_over;
+  assign csrng_otp_en_csrng_sw_app_read =
+    prim_mubi_pkg::mubi8_e'(otp_ctrl_otp_hw_cfg.data.en_csrng_sw_app_read);
+  assign entropy_src_otp_en_entropy_src_fw_read =
+    prim_mubi_pkg::mubi8_e'(otp_ctrl_otp_hw_cfg.data.en_entropy_src_fw_read);
+  assign entropy_src_otp_en_entropy_src_fw_over =
+    prim_mubi_pkg::mubi8_e'(otp_ctrl_otp_hw_cfg.data.en_entropy_src_fw_over);
   assign sram_ctrl_main_otp_en_sram_ifetch = otp_ctrl_otp_hw_cfg.data.en_sram_ifetch;
   assign lc_ctrl_otp_device_id = otp_ctrl_otp_hw_cfg.data.device_id;
   assign lc_ctrl_otp_manuf_state = otp_ctrl_otp_hw_cfg.data.manuf_state;
@@ -804,6 +808,8 @@ module top_earlgrey #(
   // Wire up alert handler LPGs
   lc_ctrl_pkg::lc_tx_t [alert_pkg::NLpg-1:0] lpg_cg_en;
   lc_ctrl_pkg::lc_tx_t [alert_pkg::NLpg-1:0] lpg_rst_en;
+
+
   // peri_sys_io_div4_0
   assign lpg_cg_en[0] = clkmgr_aon_cg_en.io_div4_peri;
   assign lpg_rst_en[0] = rstmgr_aon_rst_en.sys_io_div4[rstmgr_pkg::Domain0Sel];
@@ -864,6 +870,114 @@ module top_earlgrey #(
   // infra_sys_0
   assign lpg_cg_en[19] = clkmgr_aon_cg_en.main_infra;
   assign lpg_rst_en[19] = rstmgr_aon_rst_en.sys[rstmgr_pkg::Domain0Sel];
+
+// tie-off unused connections
+    prim_mubi_pkg::mubi4_t unused_cg_en_0;
+    assign unused_cg_en_0 = clkmgr_aon_cg_en.aon_powerup;
+    prim_mubi_pkg::mubi4_t unused_cg_en_1;
+    assign unused_cg_en_1 = clkmgr_aon_cg_en.main_powerup;
+    prim_mubi_pkg::mubi4_t unused_cg_en_2;
+    assign unused_cg_en_2 = clkmgr_aon_cg_en.io_powerup;
+    prim_mubi_pkg::mubi4_t unused_cg_en_3;
+    assign unused_cg_en_3 = clkmgr_aon_cg_en.usb_powerup;
+    prim_mubi_pkg::mubi4_t unused_cg_en_4;
+    assign unused_cg_en_4 = clkmgr_aon_cg_en.io_div2_powerup;
+    prim_mubi_pkg::mubi4_t unused_cg_en_5;
+    assign unused_cg_en_5 = clkmgr_aon_cg_en.aon_infra;
+    prim_mubi_pkg::mubi4_t unused_cg_en_6;
+    assign unused_cg_en_6 = clkmgr_aon_cg_en.aon_secure;
+    prim_mubi_pkg::mubi4_t unused_cg_en_7;
+    assign unused_cg_en_7 = clkmgr_aon_cg_en.aon_peri;
+    prim_mubi_pkg::mubi4_t unused_cg_en_8;
+    assign unused_cg_en_8 = clkmgr_aon_cg_en.aon_timers;
+    prim_mubi_pkg::mubi4_t unused_cg_en_9;
+    assign unused_cg_en_9 = clkmgr_aon_cg_en.main_hmac;
+    prim_mubi_pkg::mubi4_t unused_cg_en_10;
+    assign unused_cg_en_10 = clkmgr_aon_cg_en.main_kmac;
+    prim_mubi_pkg::mubi4_t unused_cg_en_11;
+    assign unused_cg_en_11 = clkmgr_aon_cg_en.main_otbn;
+    prim_mubi_pkg::mubi4_t unused_cg_en_12;
+    assign unused_cg_en_12 = clkmgr_aon_cg_en.io_div4_otbn;
+    prim_mubi_pkg::mubi4_t unused_cg_en_13;
+    assign unused_cg_en_13 = clkmgr_aon_cg_en.usb_secure;
+    prim_mubi_pkg::mubi4_t unused_cg_en_14;
+    assign unused_cg_en_14 = clkmgr_aon_cg_en.io_div2_peri;
+    prim_mubi_pkg::mubi4_t unused_cg_en_15;
+    assign unused_cg_en_15 = clkmgr_aon_cg_en.io_peri;
+    prim_mubi_pkg::mubi4_t unused_cg_en_16;
+    assign unused_cg_en_16 = clkmgr_aon_cg_en.usb_peri;
+    prim_mubi_pkg::mubi4_t unused_rst_en_0;
+    assign unused_rst_en_0 = rstmgr_aon_rst_en.por_aon[rstmgr_pkg::DomainAonSel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_1;
+    assign unused_rst_en_1 = rstmgr_aon_rst_en.por_aon[rstmgr_pkg::Domain0Sel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_2;
+    assign unused_rst_en_2 = rstmgr_aon_rst_en.por[rstmgr_pkg::DomainAonSel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_3;
+    assign unused_rst_en_3 = rstmgr_aon_rst_en.por[rstmgr_pkg::Domain0Sel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_4;
+    assign unused_rst_en_4 = rstmgr_aon_rst_en.por_io[rstmgr_pkg::DomainAonSel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_5;
+    assign unused_rst_en_5 = rstmgr_aon_rst_en.por_io[rstmgr_pkg::Domain0Sel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_6;
+    assign unused_rst_en_6 = rstmgr_aon_rst_en.por_io_div2[rstmgr_pkg::DomainAonSel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_7;
+    assign unused_rst_en_7 = rstmgr_aon_rst_en.por_io_div2[rstmgr_pkg::Domain0Sel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_8;
+    assign unused_rst_en_8 = rstmgr_aon_rst_en.por_io_div4[rstmgr_pkg::Domain0Sel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_9;
+    assign unused_rst_en_9 = rstmgr_aon_rst_en.por_usb[rstmgr_pkg::DomainAonSel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_10;
+    assign unused_rst_en_10 = rstmgr_aon_rst_en.por_usb[rstmgr_pkg::Domain0Sel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_11;
+    assign unused_rst_en_11 = rstmgr_aon_rst_en.lc_shadowed[rstmgr_pkg::DomainAonSel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_12;
+    assign unused_rst_en_12 = rstmgr_aon_rst_en.lc[rstmgr_pkg::DomainAonSel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_13;
+    assign unused_rst_en_13 = rstmgr_aon_rst_en.lc_shadowed[rstmgr_pkg::Domain0Sel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_14;
+    assign unused_rst_en_14 = rstmgr_aon_rst_en.lc_io_div4_shadowed[rstmgr_pkg::DomainAonSel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_15;
+    assign unused_rst_en_15 = rstmgr_aon_rst_en.lc_io_div4_shadowed[rstmgr_pkg::Domain0Sel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_16;
+    assign unused_rst_en_16 = rstmgr_aon_rst_en.lc_aon[rstmgr_pkg::DomainAonSel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_17;
+    assign unused_rst_en_17 = rstmgr_aon_rst_en.lc_aon[rstmgr_pkg::Domain0Sel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_18;
+    assign unused_rst_en_18 = rstmgr_aon_rst_en.sys_shadowed[rstmgr_pkg::DomainAonSel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_19;
+    assign unused_rst_en_19 = rstmgr_aon_rst_en.sys[rstmgr_pkg::DomainAonSel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_20;
+    assign unused_rst_en_20 = rstmgr_aon_rst_en.sys_shadowed[rstmgr_pkg::Domain0Sel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_21;
+    assign unused_rst_en_21 = rstmgr_aon_rst_en.sys_aon[rstmgr_pkg::DomainAonSel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_22;
+    assign unused_rst_en_22 = rstmgr_aon_rst_en.sys_aon[rstmgr_pkg::Domain0Sel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_23;
+    assign unused_rst_en_23 = rstmgr_aon_rst_en.spi_device[rstmgr_pkg::DomainAonSel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_24;
+    assign unused_rst_en_24 = rstmgr_aon_rst_en.spi_host0[rstmgr_pkg::DomainAonSel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_25;
+    assign unused_rst_en_25 = rstmgr_aon_rst_en.spi_host0_core[rstmgr_pkg::DomainAonSel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_26;
+    assign unused_rst_en_26 = rstmgr_aon_rst_en.spi_host0_core[rstmgr_pkg::Domain0Sel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_27;
+    assign unused_rst_en_27 = rstmgr_aon_rst_en.spi_host1[rstmgr_pkg::DomainAonSel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_28;
+    assign unused_rst_en_28 = rstmgr_aon_rst_en.spi_host1_core[rstmgr_pkg::DomainAonSel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_29;
+    assign unused_rst_en_29 = rstmgr_aon_rst_en.spi_host1_core[rstmgr_pkg::Domain0Sel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_30;
+    assign unused_rst_en_30 = rstmgr_aon_rst_en.usb[rstmgr_pkg::DomainAonSel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_31;
+    assign unused_rst_en_31 = rstmgr_aon_rst_en.usbif[rstmgr_pkg::DomainAonSel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_32;
+    assign unused_rst_en_32 = rstmgr_aon_rst_en.usbif[rstmgr_pkg::Domain0Sel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_33;
+    assign unused_rst_en_33 = rstmgr_aon_rst_en.i2c0[rstmgr_pkg::DomainAonSel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_34;
+    assign unused_rst_en_34 = rstmgr_aon_rst_en.i2c1[rstmgr_pkg::DomainAonSel];
+    prim_mubi_pkg::mubi4_t unused_rst_en_35;
+    assign unused_rst_en_35 = rstmgr_aon_rst_en.i2c2[rstmgr_pkg::DomainAonSel];
 
   // Peripheral Instantiation
 
@@ -1036,13 +1150,13 @@ module top_earlgrey #(
       .cio_sd_en_o      (cio_spi_device_sd_en_d2p),
 
       // Interrupt
-      .intr_rxf_o                  (intr_spi_device_rxf),
-      .intr_rxlvl_o                (intr_spi_device_rxlvl),
-      .intr_txlvl_o                (intr_spi_device_txlvl),
-      .intr_rxerr_o                (intr_spi_device_rxerr),
-      .intr_rxoverflow_o           (intr_spi_device_rxoverflow),
-      .intr_txunderflow_o          (intr_spi_device_txunderflow),
-      .intr_tpm_cmdaddr_notempty_o (intr_spi_device_tpm_cmdaddr_notempty),
+      .intr_rx_full_o              (intr_spi_device_rx_full),
+      .intr_rx_watermark_o         (intr_spi_device_rx_watermark),
+      .intr_tx_watermark_o         (intr_spi_device_tx_watermark),
+      .intr_rx_error_o             (intr_spi_device_rx_error),
+      .intr_rx_overflow_o          (intr_spi_device_rx_overflow),
+      .intr_tx_underflow_o         (intr_spi_device_tx_underflow),
+      .intr_tpm_header_not_empty_o (intr_spi_device_tpm_header_not_empty),
       // [5]: fatal_fault
       .alert_tx_o  ( alert_tx[5:5] ),
       .alert_rx_i  ( alert_rx[5:5] ),
@@ -1566,6 +1680,7 @@ module top_earlgrey #(
       .low_power_o(pwrmgr_aon_low_power),
       .rom_ctrl_i(rom_ctrl_pwrmgr_data),
       .fetch_en_o(pwrmgr_aon_fetch_en),
+      .sw_rst_req_i(rstmgr_aon_sw_rst_req),
       .tl_i(pwrmgr_aon_tl_req),
       .tl_o(pwrmgr_aon_tl_rsp),
 
@@ -1595,6 +1710,7 @@ module top_earlgrey #(
       .ndmreset_req_i(rv_dm_ndmreset_req),
       .alert_dump_i(alert_handler_crashdump),
       .cpu_dump_i(rv_core_ibex_crash_dump),
+      .sw_rst_req_o(rstmgr_aon_sw_rst_req),
       .tl_i(rstmgr_aon_tl_req),
       .tl_o(rstmgr_aon_tl_rsp),
       .scanmode_i,
@@ -2522,13 +2638,13 @@ module top_earlgrey #(
       intr_spi_host1_error, // IDs [74 +: 1]
       intr_spi_host0_spi_event, // IDs [73 +: 1]
       intr_spi_host0_error, // IDs [72 +: 1]
-      intr_spi_device_tpm_cmdaddr_notempty, // IDs [71 +: 1]
-      intr_spi_device_txunderflow, // IDs [70 +: 1]
-      intr_spi_device_rxoverflow, // IDs [69 +: 1]
-      intr_spi_device_rxerr, // IDs [68 +: 1]
-      intr_spi_device_txlvl, // IDs [67 +: 1]
-      intr_spi_device_rxlvl, // IDs [66 +: 1]
-      intr_spi_device_rxf, // IDs [65 +: 1]
+      intr_spi_device_tpm_header_not_empty, // IDs [71 +: 1]
+      intr_spi_device_tx_underflow, // IDs [70 +: 1]
+      intr_spi_device_rx_overflow, // IDs [69 +: 1]
+      intr_spi_device_rx_error, // IDs [68 +: 1]
+      intr_spi_device_tx_watermark, // IDs [67 +: 1]
+      intr_spi_device_rx_watermark, // IDs [66 +: 1]
+      intr_spi_device_rx_full, // IDs [65 +: 1]
       intr_gpio_gpio, // IDs [33 +: 32]
       intr_uart3_rx_parity_err, // IDs [32 +: 1]
       intr_uart3_rx_timeout, // IDs [31 +: 1]

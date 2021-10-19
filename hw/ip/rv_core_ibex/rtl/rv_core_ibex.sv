@@ -245,6 +245,21 @@ module rv_core_ibex
     .lc_en_o(pwrmgr_cpu_en)
   );
 
+  logic irq_software;
+  logic irq_timer;
+  logic irq_external;
+
+  prim_sec_anchor_buf #(
+    .Width(3)
+  ) u_prim_buf_irq (
+    .in_i({irq_software_i,
+           irq_timer_i,
+           irq_external_i}),
+    .out_o({irq_software,
+            irq_timer,
+            irq_external})
+  );
+
   ibex_top #(
     .PMPEnable                ( PMPEnable                ),
     .PMPGranularity           ( PMPGranularity           ),
@@ -299,11 +314,11 @@ module rv_core_ibex
     .data_rdata_intg_i  ( data_rdata_intg  ),
     .data_err_i         ( data_err         ),
 
-    .irq_software_i,
-    .irq_timer_i,
-    .irq_external_i,
-    .irq_fast_i     ( '0           ),
-    .irq_nm_i       ( irq_nm       ),
+    .irq_software_i     ( irq_software     ),
+    .irq_timer_i        ( irq_timer        ),
+    .irq_external_i     ( irq_external     ),
+    .irq_fast_i         ( '0               ),
+    .irq_nm_i           ( irq_nm           ),
 
     .debug_req_i,
     .crash_dump_o,
@@ -361,7 +376,7 @@ module rv_core_ibex
     .clk_i,
     .rst_ni,
     .req_i        (instr_req),
-    .type_i       (tlul_pkg::InstrType),
+    .instr_type_i (prim_mubi_pkg::MuBi4True),
     .gnt_o        (instr_gnt),
     .addr_i       (instr_addr_trans),
     .we_i         (1'b0),
@@ -412,7 +427,7 @@ module rv_core_ibex
     .clk_i,
     .rst_ni,
     .req_i        (data_req),
-    .type_i       (tlul_pkg::DataType),
+    .instr_type_i (prim_mubi_pkg::MuBi4False),
     .gnt_o        (data_gnt),
     .addr_i       (data_addr_trans),
     .we_i         (data_we),

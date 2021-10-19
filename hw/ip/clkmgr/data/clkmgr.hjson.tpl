@@ -39,6 +39,18 @@
       default: "${len(clocks.groups)}",
       local: "true"
     },
+    { name: "NumSwGateableClocks",
+      desc: "Number of SW gateable clocks",
+      type: "int",
+      default: "${len(typed_clocks.sw_clks)}",
+      local: "true"
+    },
+    { name: "NumHintableClocks",
+      desc: "Number of hintable clocks",
+      type: "int",
+      default: "${len(hint_names)}",
+      local: "true"
+    },
   ],
 
   inter_signal_list: [
@@ -194,7 +206,7 @@
     { name: "CLK_ENABLES",
       desc: '''
         Clock enable for software gateable clocks.
-        These clocks are direclty controlled by software.
+        These clocks are directly controlled by software.
       ''',
       swaccess: "rw",
       hwaccess: "hro",
@@ -315,27 +327,26 @@
           bits: "0",
           name: "EN",
           desc: "Enable measurement for ${src}",
-          resval: "0"
+          resval: "0",
+          // Measurements can cause recoverable errors depending on the
+          // thresholds which the CSR tests will not predict correctly.
+          // To provide better CSR coverage we allow writing the threshold
+          // fields, but not enabling the counters.
+          tags: ["excl:CsrNonInitTests:CsrExclWrite"]
         },
 
         {
           bits: "${max_msb}:4",
           name: "MAX_THRESH",
           desc: "Max threshold for ${src} measurement",
-          resval: "${ratio + 10}",
-          // random updates to this field if measurements are turned on can
-          // cause the results to fail
-          tags: ["excl:CsrNonInitTests:CsrExclWrite"]
+          resval: "${ratio + 10}"
         },
 
         {
           bits: "${min_msb}:${max_msb+1}",
           name: "MIN_THRESH",
           desc: "Min threshold for ${src} measurement",
-          resval: "${ratio - 10}",
-          // random updates to this field if measurements are turned on can
-          // cause the results to fail
-          tags: ["excl:CsrNonInitTests:CsrExclWrite"]
+          resval: "${ratio - 10}"
         },
       ]
     },
@@ -344,7 +355,7 @@
     { name: "RECOV_ERR_CODE",
       desc: "Recoverable Error code ",
       swaccess: "rw1c",
-      hwaccess: "hrw",
+      hwaccess: "hwo",
       fields: [
 % for src in typed_clocks.rg_srcs:
         {

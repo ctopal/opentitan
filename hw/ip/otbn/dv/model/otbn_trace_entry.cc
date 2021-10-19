@@ -24,6 +24,8 @@ void OtbnTraceEntry::from_rtl_trace(const std::string &trace) {
       writes_.push_back(line);
   }
   std::sort(writes_.begin(), writes_.end());
+  auto last = std::unique(writes_.begin(), writes_.end());
+  writes_.erase(last, writes_.end());
 }
 
 bool OtbnTraceEntry::operator==(const OtbnTraceEntry &other) const {
@@ -43,6 +45,8 @@ void OtbnTraceEntry::take_writes(const OtbnTraceEntry &other) {
       writes_.push_back(write);
     }
     std::sort(writes_.begin(), writes_.end());
+    auto last = std::unique(writes_.begin(), writes_.end());
+    writes_.erase(last, writes_.end());
   }
 }
 
@@ -53,8 +57,43 @@ bool OtbnTraceEntry::is_stall() const { return !empty() && hdr_[0] == 'S'; }
 bool OtbnTraceEntry::is_exec() const { return !empty() && hdr_[0] == 'E'; }
 
 bool OtbnTraceEntry::is_compatible(const OtbnTraceEntry &prev) const {
-  return 0 ==
-         hdr_.compare(1, std::string::npos, prev.hdr_, 1, std::string::npos);
+  // Two entries are compatible if they might both come from the multi-cycle
+  // execution of one instruction. For example, you might expect to see these
+  // two lines:
+  //
+  //   S PC: 0x00000010, insn: 0x00107db8
+  //   E PC: 0x00000010, insn: 0x00107db8
+  //
+  // which show an instruction at 0x10 stalling for a cycle and then managing
+  // to execute.
+  //
+  // As an added complication, if we see an IMEM fetch error, the entry will
+  // become
+  //
+  //   E PC: 0x00000010, insn: ??
+  //
+  // and that's fine. So the rule is:
+  //
+  //   - Compare the two lines from character 1 onwards.
+  //   - If they match: accept.
+  //   - Otherwise, if the second line has no '?' then reject.
+  //   - If there is a '?' and they match up to that point, accept.
+  //   - Otherwise: reject
+  //
+  // (This wrongly accepts some malformed examples, but that's fine: it's just
+  // meant as a quick check to make sure our trace machinery isn't dropping
+  // entries)
+
+  bool exact_match =
+      0 == hdr_.compare(1, std::string::npos, prev.hdr_, 1, std::string::npos);
+  if (exact_match)
+    return true;
+
+  size_t first_qm = hdr_.find('?', 1);
+  if (first_qm == std::string::npos)
+    return false;
+
+  return 0 == hdr_.compare(1, first_qm - 1, prev.hdr_, 1, first_qm - 1);
 }
 
 bool OtbnIssTraceEntry::from_iss_trace(const std::vector<std::string> &lines) {

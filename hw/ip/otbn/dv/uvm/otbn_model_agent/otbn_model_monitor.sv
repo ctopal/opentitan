@@ -21,30 +21,10 @@ class otbn_model_monitor extends dv_base_monitor #(
 
   protected task collect_trans(uvm_phase phase);
     fork
-      collect_start();
       collect_status();
       // TODO: Only run when coverage is enabled.
       collect_insns();
     join
-  endtask
-
-  protected task collect_start();
-    otbn_model_item trans;
-
-    forever begin
-      // Collect transactions on each clock edge when reset is high.
-      @(posedge cfg.vif.clk_i);
-      if (cfg.vif.rst_ni === 1'b1) begin
-        if (cfg.vif.start) begin
-          trans = otbn_model_item::type_id::create("trans");
-          trans.item_type = OtbnModelStart;
-          trans.status    = 0;
-          trans.err       = 0;
-          trans.mnemonic  = "";
-          analysis_port.write(trans);
-        end
-      end
-    end
   endtask
 
   protected task collect_status();
@@ -84,7 +64,14 @@ class otbn_model_monitor extends dv_base_monitor #(
 
     // Collect transactions on each clock edge when we are not in reset
     forever begin
-      @(posedge cfg.vif.clk_i);
+      // Use a clocking block to ensure we sample after the always_ff code in otbn_core_model.sv has
+      // run. This means that we'll immediately see any instructions that executed. Without it, we'd
+      // be racing against that logic, which might mean we saw the instructions a cycle later. In
+      // that case, a final instruction gets spotted after we see the status go back to idle
+      // (causing errors in the scoreboard, which doesn't expect to see instructions executing when
+      // idle).
+      @cfg.vif.cb;
+
       if (cfg.vif.rst_ni === 1'b1) begin
         // Ask the trace checker for any ISS instruction that has come in since last cycle.
         if (otbn_trace_checker_pop_iss_insn(insn_addr, insn_mnemonic)) begin
