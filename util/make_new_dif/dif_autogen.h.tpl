@@ -15,7 +15,6 @@
     Note, this template requires the following Python objects to be passed:
 
     1. ip: See util/make_new_dif.py for the definition of the `ip` obj.
-    2. list[irq]: See util/make_new_dif.py for the definition of the `irq` obj.
 </%doc>
 
 #ifndef OPENTITAN_SW_DEVICE_LIB_DIF_AUTOGEN_DIF_${ip.name_upper}_AUTOGEN_H_
@@ -51,13 +50,13 @@ typedef struct dif_${ip.name_snake} {
   mmio_region_t base_addr;
 } dif_${ip.name_snake}_t;
 
-% if len(irqs) > 0:
+% if len(ip.irqs) > 0:
 
   /**
    * A ${ip.name_snake} interrupt request type.
    */
   typedef enum dif_${ip.name_snake}_irq {
-  % for irq in irqs:
+  % for irq in ip.irqs:
     /**
      * ${irq.description}
      */
@@ -66,9 +65,13 @@ typedef struct dif_${ip.name_snake} {
       % for irq_idx in range(irq.width):
         kDif${ip.name_camel}Irq${irq.name_camel}${irq_idx} = ${loop.index},
       % endfor
+    ## This handles the RV Timer IP where there are different ENABLE/STATE/TEST
+    ## IRQ registers per hart.
+    % elif ip.name_snake == "rv_timer":
+      kDif${ip.name_camel}Irq${irq.name_camel} = ${loop.index % int(ip.parameters["N_TIMERS"].default)},
     ## This handles all other IPs.
     % else:
-        kDif${ip.name_camel}Irq${irq.name_camel} = ${loop.index},
+      kDif${ip.name_camel}Irq${irq.name_camel} = ${loop.index},
     % endif
   % endfor
   } dif_${ip.name_snake}_irq_t;
@@ -85,12 +88,18 @@ typedef struct dif_${ip.name_snake} {
    * Returns whether a particular interrupt is currently pending.
    *
    * @param ${ip.name_snake} A ${ip.name_snake} handle.
+  % if ip.name_snake == "rv_timer":
+   * @param hart_id The hart to manipulate.
+  % endif
    * @param[out] snapshot Out-param for interrupt state snapshot.
    * @return The result of the operation.
    */
   OT_WARN_UNUSED_RESULT
   dif_result_t dif_${ip.name_snake}_irq_get_state(
     const dif_${ip.name_snake}_t *${ip.name_snake},
+  % if ip.name_snake == "rv_timer":
+    uint32_t hart_id,
+  % endif
     dif_${ip.name_snake}_irq_state_snapshot_t *snapshot);
 
   /**
@@ -176,24 +185,36 @@ typedef struct dif_${ip.name_snake} {
    * restoration.
    *
    * @param ${ip.name_snake} A ${ip.name_snake} handle.
+  % if ip.name_snake == "rv_timer":
+   * @param hart_id The hart to manipulate.
+  % endif
    * @param[out] snapshot Out-param for the snapshot; may be `NULL`.
    * @return The result of the operation.
    */
   OT_WARN_UNUSED_RESULT
   dif_result_t dif_${ip.name_snake}_irq_disable_all(
     const dif_${ip.name_snake}_t *${ip.name_snake},
+  % if ip.name_snake == "rv_timer":
+    uint32_t hart_id,
+  % endif
     dif_${ip.name_snake}_irq_enable_snapshot_t *snapshot);
 
   /**
    * Restores interrupts from the given (enable) snapshot.
    *
    * @param ${ip.name_snake} A ${ip.name_snake} handle.
+  % if ip.name_snake == "rv_timer":
+   * @param hart_id The hart to manipulate.
+  % endif
    * @param snapshot A snapshot to restore from.
    * @return The result of the operation.
    */
   OT_WARN_UNUSED_RESULT
   dif_result_t dif_${ip.name_snake}_irq_restore_all(
     const dif_${ip.name_snake}_t *${ip.name_snake},
+  % if ip.name_snake == "rv_timer":
+    uint32_t hart_id,
+  % endif
     const dif_${ip.name_snake}_irq_enable_snapshot_t *snapshot);
 % endif
 
