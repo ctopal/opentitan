@@ -4,7 +4,7 @@
 
 // This file is auto-generated.
 
-#include "sw/device/lib/dif/dif_edn.h"
+#include "sw/device/lib/dif/autogen/dif_edn_autogen.h"
 
 #include "gtest/gtest.h"
 #include "sw/device/lib/base/mmio.h"
@@ -16,6 +16,7 @@ namespace dif_edn_autogen_unittest {
 namespace {
 using ::mock_mmio::MmioTest;
 using ::mock_mmio::MockDevice;
+using ::testing::Eq;
 using ::testing::Test;
 
 class EdnTest : public Test, public MmioTest {
@@ -23,7 +24,15 @@ class EdnTest : public Test, public MmioTest {
   dif_edn_t edn_ = {.base_addr = dev().region()};
 };
 
-using ::testing::Eq;
+class InitTest : public EdnTest {};
+
+TEST_F(InitTest, NullArgs) {
+  EXPECT_EQ(dif_edn_init({.base_addr = dev().region()}, nullptr), kDifBadArg);
+}
+
+TEST_F(InitTest, Success) {
+  EXPECT_EQ(dif_edn_init({.base_addr = dev().region()}, &edn_), kDifOk);
+}
 
 class IrqGetStateTest : public EdnTest {};
 
@@ -122,6 +131,29 @@ TEST_F(IrqAcknowledgeTest, Success) {
   EXPECT_EQ(dif_edn_irq_acknowledge(&edn_, kDifEdnIrqEdnFatalErr), kDifOk);
 }
 
+class IrqForceTest : public EdnTest {};
+
+TEST_F(IrqForceTest, NullArgs) {
+  EXPECT_EQ(dif_edn_irq_force(nullptr, kDifEdnIrqEdnCmdReqDone), kDifBadArg);
+}
+
+TEST_F(IrqForceTest, BadIrq) {
+  EXPECT_EQ(dif_edn_irq_force(nullptr, static_cast<dif_edn_irq_t>(32)),
+            kDifBadArg);
+}
+
+TEST_F(IrqForceTest, Success) {
+  // Force first IRQ.
+  EXPECT_WRITE32(EDN_INTR_TEST_REG_OFFSET,
+                 {{EDN_INTR_TEST_EDN_CMD_REQ_DONE_BIT, true}});
+  EXPECT_EQ(dif_edn_irq_force(&edn_, kDifEdnIrqEdnCmdReqDone), kDifOk);
+
+  // Force last IRQ.
+  EXPECT_WRITE32(EDN_INTR_TEST_REG_OFFSET,
+                 {{EDN_INTR_TEST_EDN_FATAL_ERR_BIT, true}});
+  EXPECT_EQ(dif_edn_irq_force(&edn_, kDifEdnIrqEdnFatalErr), kDifOk);
+}
+
 class IrqGetEnabledTest : public EdnTest {};
 
 TEST_F(IrqGetEnabledTest, NullArgs) {
@@ -200,29 +232,6 @@ TEST_F(IrqSetEnabledTest, Success) {
                 {{EDN_INTR_ENABLE_EDN_FATAL_ERR_BIT, 0x1, false}});
   EXPECT_EQ(dif_edn_irq_set_enabled(&edn_, kDifEdnIrqEdnFatalErr, irq_state),
             kDifOk);
-}
-
-class IrqForceTest : public EdnTest {};
-
-TEST_F(IrqForceTest, NullArgs) {
-  EXPECT_EQ(dif_edn_irq_force(nullptr, kDifEdnIrqEdnCmdReqDone), kDifBadArg);
-}
-
-TEST_F(IrqForceTest, BadIrq) {
-  EXPECT_EQ(dif_edn_irq_force(nullptr, static_cast<dif_edn_irq_t>(32)),
-            kDifBadArg);
-}
-
-TEST_F(IrqForceTest, Success) {
-  // Force first IRQ.
-  EXPECT_WRITE32(EDN_INTR_TEST_REG_OFFSET,
-                 {{EDN_INTR_TEST_EDN_CMD_REQ_DONE_BIT, true}});
-  EXPECT_EQ(dif_edn_irq_force(&edn_, kDifEdnIrqEdnCmdReqDone), kDifOk);
-
-  // Force last IRQ.
-  EXPECT_WRITE32(EDN_INTR_TEST_REG_OFFSET,
-                 {{EDN_INTR_TEST_EDN_FATAL_ERR_BIT, true}});
-  EXPECT_EQ(dif_edn_irq_force(&edn_, kDifEdnIrqEdnFatalErr), kDifOk);
 }
 
 class IrqDisableAllTest : public EdnTest {};

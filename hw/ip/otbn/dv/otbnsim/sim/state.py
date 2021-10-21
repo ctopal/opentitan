@@ -2,6 +2,7 @@
 # Licensed under the Apache License, Version 2.0, see LICENSE for details.
 # SPDX-License-Identifier: Apache-2.0
 
+from enum import IntEnum
 from typing import Dict, List, Optional
 
 from shared.mem_layout import get_memory_layout
@@ -16,6 +17,42 @@ from .loop import LoopStack
 from .reg import RegFile
 from .trace import Trace, TracePC
 from .wsr import WSRFile
+
+
+class FsmState(IntEnum):
+    r'''State of the internal start/stop FSM
+
+    The FSM diagram looks like:
+
+        IDLE  ->  PRE_EXEC  ->  EXEC  ->  POST_EXEC  -\
+                                                      |
+          ^                                           |
+          +-------------------------------------------/
+          v
+
+        LOCKED
+
+    IDLE represents the state when nothing is going on but there have been no
+    fatal errors. It matches Status.IDLE. LOCKED represents the state when
+    there has been a fatal error. It matches Status.LOCKED.
+
+    PRE_EXEC, EXEC and POST_EXEC correspond to Status.BUSY_EXECUTE. PRE_EXEC is
+    the period after starting OTBN where we're still waiting for an EDN value
+    to seed URND. EXEC is the period where we start fetching and executing
+    instructions. POST_EXEC is the single cycle after we finish executing where
+    the STATUS register gets updated.
+
+    This is a refinement of the Status enum and the integer values are picked
+    so that you can divide by 10 to get the corresponding Status entry. (This
+    isn't used in the code, but makes debugging slightly more convenient when
+    you just have the numeric values available).
+
+    '''
+    IDLE = 0
+    PRE_EXEC = 10
+    EXEC = 11
+    POST_EXEC = 12
+    LOCKED = 2550
 
 
 class OTBNState:
@@ -34,21 +71,10 @@ class OTBNState:
 
         self.dmem = Dmem()
 
-        # Stalling support: Instructions can indicate they should stall by
-        # yielding in OTBNInsn.execute. For non instruction related stalls,
-        # setting self.non_insn_stall will produce a stall.
-        #
-        # As a special case, we stall until the URND reseed is completed then
-        # stall for one more cycle before fetching the first instruction (to
-        # match the behaviour of the RTL). This is modelled by setting
-        # self._start_stall, self._urnd_stall and self.non_insn_stall
-        self.non_insn_stall = False
-        self._start_stall = False
-        self._urnd_stall = False
+        self.fsm_state = FsmState.IDLE
 
         self.loop_stack = LoopStack()
         self.ext_regs = OTBNExtRegs()
-        self.running = False
 
         self._err_bits = 0
         self.pending_halt = False
@@ -61,6 +87,10 @@ class OTBNState:
         self.rnd_256b = 0
         self.rnd_cached_tmp = None  # type: Optional[int]
         self.counter = 0
+
+        # This flag is set to true if we've injected integrity errors, trashing
+        # the whole of IMEM. The next fetch should fail.
+        self.invalidated_imem = False
 
     def get_next_pc(self) -> int:
         if self._pc_next_override is not None:
@@ -115,6 +145,7 @@ class OTBNState:
         self.rnd_cdc_counter = 0
 
     def set_urnd_reseed_complete(self) -> None:
+        assert self.fsm_state == FsmState.PRE_EXEC
         self._urnd_reseed_complete = True
 
     def loop_start(self, iterations: int, bodysize: int) -> None:
@@ -145,33 +176,55 @@ class OTBNState:
         c += self.wdrs.changes()
         return c
 
+    def running(self) -> bool:
+        return self.fsm_state not in [FsmState.IDLE, FsmState.LOCKED]
+
     def commit(self, sim_stalled: bool) -> None:
-        # In case of a pending halt only commit the external registers, which
-        # contain e.g. the ERR_BITS field, but nothing else.
-        if self.pending_halt:
-            self.ext_regs.commit()
-            return
+        # We shouldn't be running commit() in IDLE or LOCKED mode
+        assert self.running()
 
-        # If error bits are set, pending_halt should have been set as well.
-        assert self._err_bits == 0
-
-        # If model is waiting for a RTL done signal regarding RND while also executing instructions,
-        # increase the counter
+        # If model is waiting for the RND register to cross CDC, increment a
+        # counter to say how long we've waited. This lets us spot if the CDC
+        # gets stuck for some reason.
         if self.rnd_cdc_pending:
             self.rnd_cdc_counter += 1
 
-        if self._urnd_stall:
+        # If we are in PRE_EXEC mode, we should commit external registers
+        # (which lets us reflect things like the update to the STATUS
+        # register). Then we wait until _urnd_reseed_complete, at which point,
+        # we'll switch to EXEC mode.
+        if self.fsm_state == FsmState.PRE_EXEC:
+            self.ext_regs.commit()
             if self._urnd_reseed_complete:
-                self._urnd_stall = False
+                self.fsm_state = FsmState.EXEC
+
             return
 
-        # If self._start_stall, this is the end of the stall cycle at the start
-        # of a run. Clear self.non_insn_stall and self._start_stall
-        # and commit self.ext_regs (so the start flag becomes visible).
-        if self._start_stall:
-            self._start_stall = False
-            self.non_insn_stall = False
+        # If we are in POST_EXEC mode, this is the single cycle after the end
+        # of execution. Commit external registers (to update STATUS) and then
+        # switch to IDLE or LOCKED, depending on whether there are any bits set
+        # in the upper half of _err_bits.
+        if self.fsm_state == FsmState.POST_EXEC:
             self.ext_regs.commit()
+            self.fsm_state = (FsmState.LOCKED
+                              if self._err_bits >> 16 else FsmState.IDLE)
+            return
+
+        # Otherwise, we're in EXEC mode.
+        assert self.fsm_state == FsmState.EXEC
+
+        # In case of a pending halt, commit the external registers, which
+        # contain e.g. the ERR_BITS field, but nothing else. Switch to
+        # POST_EXEC to allow one more cycle.
+        if self.pending_halt:
+            self.ext_regs.commit()
+            self.fsm_state = FsmState.POST_EXEC
+            return
+
+        # As pending_halt wasn't set, there shouldn't be any pending error bits
+        assert self._err_bits == 0
+
+        self.ext_regs.commit()
 
         # If we're stalled, there's nothing more to do: we only commit the rest
         # of the architectural state when we finish our stall cycles.
@@ -200,16 +253,13 @@ class OTBNState:
         self.wdrs.abort()
 
     def start(self) -> None:
-        '''Set the running flag and the ext_reg busy flag; perform state init'''
+        '''Start running; perform state init'''
         self.ext_regs.write('STATUS', Status.BUSY_EXECUTE, True)
-        self.ext_regs.write('INSN_CNT', 0, True)
-        self.running = True
-        self._start_stall = True
-        self._urnd_stall = True
-        self.non_insn_stall = True
         self.pending_halt = False
         self._err_bits = 0
         self._urnd_reseed_complete = False
+
+        self.fsm_state = FsmState.PRE_EXEC
 
         self.pc = 0
 
@@ -249,8 +299,12 @@ class OTBNState:
         # INTR_STATE is the interrupt state register. Bit 0 (which is being
         # set) is the 'done' flag.
         self.ext_regs.set_bits('INTR_STATE', 1 << 0)
-        # STATUS is a status register. Return to idle.
-        self.ext_regs.write('STATUS', Status.IDLE, True)
+
+        # STATUS is a status register. If there are any pending error bits
+        # greater than 16, this was a fatal error so we should lock ourselves.
+        # Otherwise, go back to IDLE.
+        new_status = Status.LOCKED if self._err_bits >> 16 else Status.IDLE
+        self.ext_regs.write('STATUS', new_status, True)
 
         # Make any error bits visible
         self.ext_regs.write('ERR_BITS', self._err_bits, True)
@@ -259,8 +313,6 @@ class OTBNState:
         # useful in simulations that want to track whether we stopped where we
         # expected to stop.
         self.ext_regs.write('STOP_PC', self.pc, True)
-
-        self.running = False
 
     def set_flags(self, fg: int, flags: FlagReg) -> None:
         '''Update flags for a flag group'''

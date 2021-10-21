@@ -4,7 +4,7 @@
 
 // This file is auto-generated.
 
-#include "sw/device/lib/dif/dif_pwrmgr.h"
+#include "sw/device/lib/dif/autogen/dif_pwrmgr_autogen.h"
 
 #include "gtest/gtest.h"
 #include "sw/device/lib/base/mmio.h"
@@ -16,6 +16,7 @@ namespace dif_pwrmgr_autogen_unittest {
 namespace {
 using ::mock_mmio::MmioTest;
 using ::mock_mmio::MockDevice;
+using ::testing::Eq;
 using ::testing::Test;
 
 class PwrmgrTest : public Test, public MmioTest {
@@ -23,7 +24,16 @@ class PwrmgrTest : public Test, public MmioTest {
   dif_pwrmgr_t pwrmgr_ = {.base_addr = dev().region()};
 };
 
-using ::testing::Eq;
+class InitTest : public PwrmgrTest {};
+
+TEST_F(InitTest, NullArgs) {
+  EXPECT_EQ(dif_pwrmgr_init({.base_addr = dev().region()}, nullptr),
+            kDifBadArg);
+}
+
+TEST_F(InitTest, Success) {
+  EXPECT_EQ(dif_pwrmgr_init({.base_addr = dev().region()}, &pwrmgr_), kDifOk);
+}
 
 class IrqGetStateTest : public PwrmgrTest {};
 
@@ -111,6 +121,24 @@ TEST_F(IrqAcknowledgeTest, Success) {
   EXPECT_EQ(dif_pwrmgr_irq_acknowledge(&pwrmgr_, kDifPwrmgrIrqWakeup), kDifOk);
 }
 
+class IrqForceTest : public PwrmgrTest {};
+
+TEST_F(IrqForceTest, NullArgs) {
+  EXPECT_EQ(dif_pwrmgr_irq_force(nullptr, kDifPwrmgrIrqWakeup), kDifBadArg);
+}
+
+TEST_F(IrqForceTest, BadIrq) {
+  EXPECT_EQ(dif_pwrmgr_irq_force(nullptr, static_cast<dif_pwrmgr_irq_t>(32)),
+            kDifBadArg);
+}
+
+TEST_F(IrqForceTest, Success) {
+  // Force first IRQ.
+  EXPECT_WRITE32(PWRMGR_INTR_TEST_REG_OFFSET,
+                 {{PWRMGR_INTR_TEST_WAKEUP_BIT, true}});
+  EXPECT_EQ(dif_pwrmgr_irq_force(&pwrmgr_, kDifPwrmgrIrqWakeup), kDifOk);
+}
+
 class IrqGetEnabledTest : public PwrmgrTest {};
 
 TEST_F(IrqGetEnabledTest, NullArgs) {
@@ -175,24 +203,6 @@ TEST_F(IrqSetEnabledTest, Success) {
   EXPECT_EQ(
       dif_pwrmgr_irq_set_enabled(&pwrmgr_, kDifPwrmgrIrqWakeup, irq_state),
       kDifOk);
-}
-
-class IrqForceTest : public PwrmgrTest {};
-
-TEST_F(IrqForceTest, NullArgs) {
-  EXPECT_EQ(dif_pwrmgr_irq_force(nullptr, kDifPwrmgrIrqWakeup), kDifBadArg);
-}
-
-TEST_F(IrqForceTest, BadIrq) {
-  EXPECT_EQ(dif_pwrmgr_irq_force(nullptr, static_cast<dif_pwrmgr_irq_t>(32)),
-            kDifBadArg);
-}
-
-TEST_F(IrqForceTest, Success) {
-  // Force first IRQ.
-  EXPECT_WRITE32(PWRMGR_INTR_TEST_REG_OFFSET,
-                 {{PWRMGR_INTR_TEST_WAKEUP_BIT, true}});
-  EXPECT_EQ(dif_pwrmgr_irq_force(&pwrmgr_, kDifPwrmgrIrqWakeup), kDifOk);
 }
 
 class IrqDisableAllTest : public PwrmgrTest {};

@@ -12,12 +12,11 @@
     This template requires the following Python objects to be passed:
 
     1. ip: See util/make_new_dif.py for the definition of the `ip` obj.
-    2. list[irq]: See util/make_new_dif.py for the definition of the `irq` obj.
 </%doc>
 
 // This file is auto-generated.
 
-#include "sw/device/lib/dif/dif_${ip.name_snake}.h"
+#include "sw/device/lib/dif/autogen/dif_${ip.name_snake}_autogen.h"
 
 #include "gtest/gtest.h"
 #include "sw/device/lib/base/mmio.h"
@@ -29,6 +28,7 @@ namespace dif_${ip.name_snake}_autogen_unittest {
 namespace {
   using ::mock_mmio::MmioTest;
   using ::mock_mmio::MockDevice;
+  using ::testing::Eq;
   using ::testing::Test;
 
   class ${ip.name_camel}Test : public Test, public MmioTest {
@@ -36,9 +36,23 @@ namespace {
     dif_${ip.name_snake}_t ${ip.name_snake}_ = {.base_addr = dev().region()};
   };
 
-% if len(irqs) > 0:
-  using ::testing::Eq;
+  class InitTest : public ${ip.name_camel}Test {};
 
+  TEST_F(InitTest, NullArgs) {
+    EXPECT_EQ(dif_${ip.name_snake}_init(
+        {.base_addr = dev().region()},
+        nullptr),
+      kDifBadArg);
+  }
+
+  TEST_F(InitTest, Success) {
+    EXPECT_EQ(dif_${ip.name_snake}_init(
+        {.base_addr = dev().region()},
+        &${ip.name_snake}_),
+      kDifOk);
+  }
+
+% if len(ip.irqs) > 0:
   class IrqGetStateTest : public ${ip.name_camel}Test {};
 
   TEST_F(IrqGetStateTest, NullArgs) {
@@ -46,16 +60,25 @@ namespace {
 
     EXPECT_EQ(dif_${ip.name_snake}_irq_get_state(
         nullptr, 
+      % if ip.name_snake == "rv_timer":
+        0,
+      % endif
         &irq_snapshot),
       kDifBadArg);
 
     EXPECT_EQ(dif_${ip.name_snake}_irq_get_state(
         &${ip.name_snake}_, 
+      % if ip.name_snake == "rv_timer":
+        0,
+      % endif
         nullptr),
       kDifBadArg);
 
     EXPECT_EQ(dif_${ip.name_snake}_irq_get_state(
         nullptr, 
+      % if ip.name_snake == "rv_timer":
+        0,
+      % endif
         nullptr),
       kDifBadArg);
   }
@@ -63,10 +86,17 @@ namespace {
   TEST_F(IrqGetStateTest, SuccessAllRaised) {
     dif_${ip.name_snake}_irq_state_snapshot_t irq_snapshot = 0;
 
+  % if ip.name_snake == "rv_timer":
+    EXPECT_READ32(${ip.name_upper}_INTR_STATE0_REG_OFFSET, 
+  % else:
     EXPECT_READ32(${ip.name_upper}_INTR_STATE_REG_OFFSET, 
+  % endif
       std::numeric_limits<uint32_t>::max());
     EXPECT_EQ(dif_${ip.name_snake}_irq_get_state(
         &${ip.name_snake}_, 
+      % if ip.name_snake == "rv_timer":
+        0,
+      % endif
         &irq_snapshot),
       kDifOk);
     EXPECT_EQ(irq_snapshot, std::numeric_limits<uint32_t>::max());
@@ -75,9 +105,16 @@ namespace {
   TEST_F(IrqGetStateTest, SuccessNoneRaised) {
     dif_${ip.name_snake}_irq_state_snapshot_t irq_snapshot = 0;
 
+  % if ip.name_snake == "rv_timer":
+    EXPECT_READ32(${ip.name_upper}_INTR_STATE0_REG_OFFSET, 0);
+  % else:
     EXPECT_READ32(${ip.name_upper}_INTR_STATE_REG_OFFSET, 0);
+  % endif
     EXPECT_EQ(dif_${ip.name_snake}_irq_get_state(
         &${ip.name_snake}_, 
+      % if ip.name_snake == "rv_timer":
+        0,
+      % endif
         &irq_snapshot),
       kDifOk);
     EXPECT_EQ(irq_snapshot, 0);
@@ -90,30 +127,30 @@ namespace {
 
     EXPECT_EQ(dif_${ip.name_snake}_irq_is_pending(
         nullptr, 
-      % if irqs[0].width > 1:
-        kDif${ip.name_camel}Irq${irqs[0].name_camel}0,
+      % if ip.irqs[0].width > 1:
+        kDif${ip.name_camel}Irq${ip.irqs[0].name_camel}0,
       % else:
-        kDif${ip.name_camel}Irq${irqs[0].name_camel},
+        kDif${ip.name_camel}Irq${ip.irqs[0].name_camel},
       % endif
         &is_pending),
       kDifBadArg);
 
     EXPECT_EQ(dif_${ip.name_snake}_irq_is_pending(
         &${ip.name_snake}_, 
-      % if irqs[0].width > 1:
-        kDif${ip.name_camel}Irq${irqs[0].name_camel}0,
+      % if ip.irqs[0].width > 1:
+        kDif${ip.name_camel}Irq${ip.irqs[0].name_camel}0,
       % else:
-        kDif${ip.name_camel}Irq${irqs[0].name_camel},
+        kDif${ip.name_camel}Irq${ip.irqs[0].name_camel},
       % endif
         nullptr),
       kDifBadArg);
 
     EXPECT_EQ(dif_${ip.name_snake}_irq_is_pending(
         nullptr,
-      % if irqs[0].width > 1:
-        kDif${ip.name_camel}Irq${irqs[0].name_camel}0,
+      % if ip.irqs[0].width > 1:
+        kDif${ip.name_camel}Irq${ip.irqs[0].name_camel}0,
       % else:
-        kDif${ip.name_camel}Irq${irqs[0].name_camel},
+        kDif${ip.name_camel}Irq${ip.irqs[0].name_camel},
       % endif
         nullptr),
       kDifBadArg);
@@ -134,38 +171,49 @@ namespace {
 
     // Get the first IRQ state.
     irq_state = false;
+  % if ip.name_snake == "rv_timer":
+    EXPECT_READ32(${ip.name_upper}_INTR_STATE0_REG_OFFSET, {{0, true}});
+  % else:
     EXPECT_READ32(${ip.name_upper}_INTR_STATE_REG_OFFSET,
-      % if irqs[0].width > 1:
+    ## This handles the GPIO IP which has a multi-dimensional IRQ.
+    % if ip.irqs[0].width > 1:
         {{0, true}});
-      % else:
-        {{${ip.name_upper}_INTR_STATE_${irqs[0].name_upper}_BIT, true}});
-      % endif
+    % else:
+        {{${ip.name_upper}_INTR_STATE_${ip.irqs[0].name_upper}_BIT, true}});
+    % endif
+  % endif
     EXPECT_EQ(dif_${ip.name_snake}_irq_is_pending(
         &${ip.name_snake}_,
-      % if irqs[0].width > 1:
-        kDif${ip.name_camel}Irq${irqs[0].name_camel}0,
+      % if ip.irqs[0].width > 1:
+        kDif${ip.name_camel}Irq${ip.irqs[0].name_camel}0,
       % else:
-        kDif${ip.name_camel}Irq${irqs[0].name_camel},
+        kDif${ip.name_camel}Irq${ip.irqs[0].name_camel},
       % endif
         &irq_state),
       kDifOk);
     EXPECT_TRUE(irq_state);
 
-  % if len(irqs) > 1 or irqs[0].width > 1:
+  % if len(ip.irqs) > 1 or ip.irqs[0].width > 1:
     // Get the last IRQ state.
     irq_state = true;
+    % if ip.name_snake == "rv_timer":
+    EXPECT_READ32(${ip.name_upper}_INTR_STATE0_REG_OFFSET,
+      {{${len(ip.irqs) - 1}, false}});
+    % else:
     EXPECT_READ32(${ip.name_upper}_INTR_STATE_REG_OFFSET,
-      % if irqs[0].width > 1:
-        {{${irqs[0].width - 1}, false}});
+      ## This handles the GPIO IP which has a multi-dimensional IRQ.
+      % if ip.irqs[0].width > 1:
+        {{${ip.irqs[0].width - 1}, false}});
       % else:
-        {{${ip.name_upper}_INTR_STATE_${irqs[-1].name_upper}_BIT, false}});
+        {{${ip.name_upper}_INTR_STATE_${ip.irqs[-1].name_upper}_BIT, false}});
       % endif
+    % endif
     EXPECT_EQ(dif_${ip.name_snake}_irq_is_pending(
         &${ip.name_snake}_,
-      % if irqs[0].width > 1:
-        kDif${ip.name_camel}Irq${irqs[0].name_camel}${irqs[0].width - 1},
+      % if ip.irqs[0].width > 1:
+        kDif${ip.name_camel}Irq${ip.irqs[0].name_camel}${ip.irqs[0].width - 1},
       % else:
-        kDif${ip.name_camel}Irq${irqs[-1].name_camel},
+        kDif${ip.name_camel}Irq${ip.irqs[-1].name_camel},
       % endif
         &irq_state),
       kDifOk);
@@ -178,10 +226,10 @@ namespace {
   TEST_F(IrqAcknowledgeTest, NullArgs) {
     EXPECT_EQ(dif_${ip.name_snake}_irq_acknowledge(
         nullptr, 
-      % if irqs[0].width > 1:
-        kDif${ip.name_camel}Irq${irqs[0].name_camel}0),
+      % if ip.irqs[0].width > 1:
+        kDif${ip.name_camel}Irq${ip.irqs[0].name_camel}0),
       % else:
-        kDif${ip.name_camel}Irq${irqs[0].name_camel}),
+        kDif${ip.name_camel}Irq${ip.irqs[0].name_camel}),
       % endif
       kDifBadArg);
   }
@@ -195,40 +243,119 @@ namespace {
 
   TEST_F(IrqAcknowledgeTest, Success) {
     // Clear the first IRQ state.
+  % if ip.name_snake == "rv_timer":
+    EXPECT_WRITE32(${ip.name_upper}_INTR_STATE0_REG_OFFSET, {{0, true}});
+  % else:
     EXPECT_WRITE32(${ip.name_upper}_INTR_STATE_REG_OFFSET,
-      % if irqs[0].width > 1:
-         {{0, true}});
-      % else:
-        {{${ip.name_upper}_INTR_STATE_${irqs[0].name_upper}_BIT, true}});
-      % endif
+    ## This handles the GPIO IP which has a multi-dimensional IRQ.
+    % if ip.irqs[0].width > 1:
+       {{0, true}});
+    % else:
+      {{${ip.name_upper}_INTR_STATE_${ip.irqs[0].name_upper}_BIT, true}});
+    % endif
+  % endif
     EXPECT_EQ(dif_${ip.name_snake}_irq_acknowledge(
         &${ip.name_snake}_,
-      % if irqs[0].width > 1:
-        kDif${ip.name_camel}Irq${irqs[0].name_camel}0),
+      % if ip.irqs[0].width > 1:
+        kDif${ip.name_camel}Irq${ip.irqs[0].name_camel}0),
       % else:
-        kDif${ip.name_camel}Irq${irqs[0].name_camel}),
+        kDif${ip.name_camel}Irq${ip.irqs[0].name_camel}),
       % endif
       kDifOk);
 
-  % if len(irqs) > 1 or irqs[0].width > 1:
+  % if len(ip.irqs) > 1 or ip.irqs[0].width > 1:
     // Clear the last IRQ state.
+    % if ip.name_snake == "rv_timer":
+    EXPECT_WRITE32(${ip.name_upper}_INTR_STATE0_REG_OFFSET,
+      {{${len(ip.irqs) - 1}, true}});
+    % else:
     EXPECT_WRITE32(${ip.name_upper}_INTR_STATE_REG_OFFSET,
-      % if irqs[0].width > 1:
-        {{${irqs[0].width - 1}, true}});
+      ## This handles the GPIO IP which has a multi-dimensional IRQ.
+      % if ip.irqs[0].width > 1:
+        {{${ip.irqs[0].width - 1}, true}});
       % else:
-        {{${ip.name_upper}_INTR_STATE_${irqs[-1].name_upper}_BIT, true}});
+        {{${ip.name_upper}_INTR_STATE_${ip.irqs[-1].name_upper}_BIT, true}});
       % endif
+    % endif
     EXPECT_EQ(dif_${ip.name_snake}_irq_acknowledge(
         &${ip.name_snake}_,
-      % if irqs[0].width > 1:
-        kDif${ip.name_camel}Irq${irqs[0].name_camel}${irqs[0].width - 1}),
+      % if ip.irqs[0].width > 1:
+        kDif${ip.name_camel}Irq${ip.irqs[0].name_camel}${ip.irqs[0].width - 1}),
       % else:
-        kDif${ip.name_camel}Irq${irqs[-1].name_camel}),
+        kDif${ip.name_camel}Irq${ip.irqs[-1].name_camel}),
       % endif
       kDifOk);
   % endif
   }
 
+  class IrqForceTest : public ${ip.name_camel}Test {};
+
+  TEST_F(IrqForceTest, NullArgs) {
+    EXPECT_EQ(dif_${ip.name_snake}_irq_force(
+        nullptr, 
+      % if ip.irqs[0].width > 1:
+        kDif${ip.name_camel}Irq${ip.irqs[0].name_camel}0),
+      % else:
+        kDif${ip.name_camel}Irq${ip.irqs[0].name_camel}),
+      % endif
+      kDifBadArg);
+  }
+
+  TEST_F(IrqForceTest, BadIrq) {
+    EXPECT_EQ(dif_${ip.name_snake}_irq_force(
+        nullptr, 
+        static_cast<dif_${ip.name_snake}_irq_t>(32)),
+      kDifBadArg);
+  }
+
+  TEST_F(IrqForceTest, Success) {
+    // Force first IRQ.
+  % if ip.name_snake == "rv_timer":
+    EXPECT_WRITE32(${ip.name_upper}_INTR_TEST0_REG_OFFSET, {{0, true}});
+  % else:
+    EXPECT_WRITE32(${ip.name_upper}_INTR_TEST_REG_OFFSET,
+    ## This handles the GPIO IP which has a multi-dimensional IRQ.
+    % if ip.irqs[0].width > 1:
+      {{0, true}});
+    % else:
+      {{${ip.name_upper}_INTR_TEST_${ip.irqs[0].name_upper}_BIT, true}});
+    % endif
+  % endif
+    EXPECT_EQ(dif_${ip.name_snake}_irq_force(
+        &${ip.name_snake}_,
+      % if ip.irqs[0].width > 1:
+        kDif${ip.name_camel}Irq${ip.irqs[0].name_camel}0),
+      % else:
+        kDif${ip.name_camel}Irq${ip.irqs[0].name_camel}),
+      % endif
+      kDifOk);
+
+  % if len(ip.irqs) > 1 or ip.irqs[0].width > 1:
+    // Force last IRQ.
+    % if ip.name_snake == "rv_timer":
+    EXPECT_WRITE32(${ip.name_upper}_INTR_TEST0_REG_OFFSET,
+      {{${len(ip.irqs) - 1}, true}});
+    % else:
+    EXPECT_WRITE32(${ip.name_upper}_INTR_TEST_REG_OFFSET,
+      ## This handles the GPIO IP which has a multi-dimensional IRQ.
+      % if ip.irqs[0].width > 1:
+        {{${ip.irqs[0].width - 1}, true}});
+      % else:
+        {{${ip.name_upper}_INTR_TEST_${ip.irqs[-1].name_upper}_BIT, true}});
+      % endif
+    % endif
+    EXPECT_EQ(dif_${ip.name_snake}_irq_force(
+        &${ip.name_snake}_,
+      % if ip.irqs[0].width > 1:
+        kDif${ip.name_camel}Irq${ip.irqs[-1].name_camel}${ip.irqs[0].width - 1}),
+      % else:
+        kDif${ip.name_camel}Irq${ip.irqs[-1].name_camel}),
+      % endif
+      kDifOk);
+  % endif
+  }
+
+% if ip.name_snake != "aon_timer":
   class IrqGetEnabledTest : public ${ip.name_camel}Test {};
 
   TEST_F(IrqGetEnabledTest, NullArgs) {
@@ -236,30 +363,30 @@ namespace {
 
     EXPECT_EQ(dif_${ip.name_snake}_irq_get_enabled(
         nullptr, 
-      % if irqs[0].width > 1:
-        kDif${ip.name_camel}Irq${irqs[0].name_camel}0,
+      % if ip.irqs[0].width > 1:
+        kDif${ip.name_camel}Irq${ip.irqs[0].name_camel}0,
       % else:
-        kDif${ip.name_camel}Irq${irqs[0].name_camel},
+        kDif${ip.name_camel}Irq${ip.irqs[0].name_camel},
       % endif
         &irq_state),
       kDifBadArg);
 
     EXPECT_EQ(dif_${ip.name_snake}_irq_get_enabled(
         &${ip.name_snake}_, 
-      % if irqs[0].width > 1:
-        kDif${ip.name_camel}Irq${irqs[0].name_camel}0,
+      % if ip.irqs[0].width > 1:
+        kDif${ip.name_camel}Irq${ip.irqs[0].name_camel}0,
       % else:
-        kDif${ip.name_camel}Irq${irqs[0].name_camel},
+        kDif${ip.name_camel}Irq${ip.irqs[0].name_camel},
       % endif
         nullptr),
       kDifBadArg);
 
     EXPECT_EQ(dif_${ip.name_snake}_irq_get_enabled(
         nullptr, 
-      % if irqs[0].width > 1:
-        kDif${ip.name_camel}Irq${irqs[0].name_camel}0,
+      % if ip.irqs[0].width > 1:
+        kDif${ip.name_camel}Irq${ip.irqs[0].name_camel}0,
       % else:
-        kDif${ip.name_camel}Irq${irqs[0].name_camel},
+        kDif${ip.name_camel}Irq${ip.irqs[0].name_camel},
       % endif
         nullptr),
       kDifBadArg);
@@ -280,38 +407,49 @@ namespace {
 
     // First IRQ is enabled.
     irq_state = kDifToggleDisabled;
+  % if ip.name_snake == "rv_timer":
+    EXPECT_READ32(${ip.name_upper}_INTR_ENABLE0_REG_OFFSET, {{0, true}});
+  % else:
     EXPECT_READ32(${ip.name_upper}_INTR_ENABLE_REG_OFFSET,
-      % if irqs[0].width > 1:
-        {{0, true}});
-      % else:
-        {{${ip.name_upper}_INTR_ENABLE_${irqs[0].name_upper}_BIT, true}});
-      % endif
+    ## This handles the GPIO IP which has a multi-dimensional IRQ.
+    % if ip.irqs[0].width > 1:
+      {{0, true}});
+    % else:
+      {{${ip.name_upper}_INTR_ENABLE_${ip.irqs[0].name_upper}_BIT, true}});
+    % endif
+  % endif
     EXPECT_EQ(dif_${ip.name_snake}_irq_get_enabled(
         &${ip.name_snake}_,
-      % if irqs[0].width > 1:
-        kDif${ip.name_camel}Irq${irqs[0].name_camel}0,
+      % if ip.irqs[0].width > 1:
+        kDif${ip.name_camel}Irq${ip.irqs[0].name_camel}0,
       % else:
-        kDif${ip.name_camel}Irq${irqs[0].name_camel},
+        kDif${ip.name_camel}Irq${ip.irqs[0].name_camel},
       % endif
         &irq_state),
       kDifOk);
     EXPECT_EQ(irq_state, kDifToggleEnabled);
 
-  % if len(irqs) > 1 or irqs[0].width > 1:
+  % if len(ip.irqs) > 1 or ip.irqs[0].width > 1:
     // Last IRQ is disabled.
     irq_state = kDifToggleEnabled;
+    % if ip.name_snake == "rv_timer":
+    EXPECT_READ32(${ip.name_upper}_INTR_ENABLE0_REG_OFFSET,
+      {{${len(ip.irqs) - 1}, false}});
+    % else:
     EXPECT_READ32(${ip.name_upper}_INTR_ENABLE_REG_OFFSET,
-      % if irqs[0].width > 1:
-        {{${irqs[0].width - 1}, false}});
+      ## This handles the GPIO IP which has a multi-dimensional IRQ.
+      % if ip.irqs[0].width > 1:
+        {{${ip.irqs[0].width - 1}, false}});
       % else:
-        {{${ip.name_upper}_INTR_ENABLE_${irqs[-1].name_upper}_BIT, false}});
+        {{${ip.name_upper}_INTR_ENABLE_${ip.irqs[-1].name_upper}_BIT, false}});
       % endif
+    % endif
     EXPECT_EQ(dif_${ip.name_snake}_irq_get_enabled(
         &${ip.name_snake}_,
-      % if irqs[0].width > 1:
-        kDif${ip.name_camel}Irq${irqs[0].name_camel}${irqs[0].width - 1},
+      % if ip.irqs[0].width > 1:
+        kDif${ip.name_camel}Irq${ip.irqs[0].name_camel}${ip.irqs[0].width - 1},
       % else:
-        kDif${ip.name_camel}Irq${irqs[-1].name_camel},
+        kDif${ip.name_camel}Irq${ip.irqs[-1].name_camel},
       % endif
         &irq_state),
       kDifOk);
@@ -326,10 +464,10 @@ namespace {
 
     EXPECT_EQ(dif_${ip.name_snake}_irq_set_enabled(
         nullptr, 
-      % if irqs[0].width > 1:
-        kDif${ip.name_camel}Irq${irqs[0].name_camel}0,
+      % if ip.irqs[0].width > 1:
+        kDif${ip.name_camel}Irq${ip.irqs[0].name_camel}0,
       % else:
-        kDif${ip.name_camel}Irq${irqs[0].name_camel},
+        kDif${ip.name_camel}Irq${ip.irqs[0].name_camel},
       % endif
         irq_state),
       kDifBadArg);
@@ -350,95 +488,50 @@ namespace {
 
     // Enable first IRQ.
     irq_state = kDifToggleEnabled;
+  % if ip.name_snake == "rv_timer":
+    EXPECT_MASK32(${ip.name_upper}_INTR_ENABLE0_REG_OFFSET, {{0, 0x1, true}});
+  % else:
     EXPECT_MASK32(${ip.name_upper}_INTR_ENABLE_REG_OFFSET,
-      % if irqs[0].width > 1:
-        {{0, 0x1, true}});
-      % else:
-        {{${ip.name_upper}_INTR_ENABLE_${irqs[0].name_upper}_BIT, 0x1, true}});
-      % endif
+    ## This handles the GPIO IP which has a multi-dimensional IRQ.
+    % if ip.irqs[0].width > 1:
+      {{0, 0x1, true}});
+    % else:
+      {{${ip.name_upper}_INTR_ENABLE_${ip.irqs[0].name_upper}_BIT, 0x1, true}});
+    % endif
+  % endif
     EXPECT_EQ(dif_${ip.name_snake}_irq_set_enabled(
         &${ip.name_snake}_,
-      % if irqs[0].width > 1:
-        kDif${ip.name_camel}Irq${irqs[0].name_camel}0,
+      % if ip.irqs[0].width > 1:
+        kDif${ip.name_camel}Irq${ip.irqs[0].name_camel}0,
       % else:
-        kDif${ip.name_camel}Irq${irqs[0].name_camel},
+        kDif${ip.name_camel}Irq${ip.irqs[0].name_camel},
       % endif
         irq_state),
       kDifOk);
 
-  % if len(irqs) > 1 or irqs[0].width > 1:
+  % if len(ip.irqs) > 1 or ip.irqs[0].width > 1:
     // Disable last IRQ.
     irq_state = kDifToggleDisabled;
+  % if ip.name_snake == "rv_timer":
+    EXPECT_MASK32(${ip.name_upper}_INTR_ENABLE0_REG_OFFSET,
+      {{${len(ip.irqs) - 1}, 0x1, false}});
+  % else:
     EXPECT_MASK32(${ip.name_upper}_INTR_ENABLE_REG_OFFSET,
-      % if irqs[0].width > 1:
-        {{${irqs[0].width - 1}, 0x1, false}});
+      ## This handles the GPIO IP which has a multi-dimensional IRQ.
+      % if ip.irqs[0].width > 1:
+        {{${ip.irqs[0].width - 1}, 0x1, false}});
       % else:
-        {{${ip.name_upper}_INTR_ENABLE_${irqs[-1].name_upper}_BIT, 0x1, false}});
+        {{${ip.name_upper}_INTR_ENABLE_${ip.irqs[-1].name_upper}_BIT, 0x1, false}});
       % endif
+  % endif
     EXPECT_EQ(dif_${ip.name_snake}_irq_set_enabled(
         &${ip.name_snake}_,
-      % if irqs[0].width > 1:
-        kDif${ip.name_camel}Irq${irqs[0].name_camel}${irqs[0].width - 1},
+      % if ip.irqs[0].width > 1:
+        kDif${ip.name_camel}Irq${ip.irqs[0].name_camel}${ip.irqs[0].width - 1},
       % else:
-        kDif${ip.name_camel}Irq${irqs[-1].name_camel},
+        kDif${ip.name_camel}Irq${ip.irqs[-1].name_camel},
       % endif
         irq_state),
-      kDifOk);
-  % endif
-  }
-
-  class IrqForceTest : public ${ip.name_camel}Test {};
-
-  TEST_F(IrqForceTest, NullArgs) {
-    EXPECT_EQ(dif_${ip.name_snake}_irq_force(
-        nullptr, 
-      % if irqs[0].width > 1:
-        kDif${ip.name_camel}Irq${irqs[0].name_camel}0),
-      % else:
-        kDif${ip.name_camel}Irq${irqs[0].name_camel}),
-      % endif
-      kDifBadArg);
-  }
-
-  TEST_F(IrqForceTest, BadIrq) {
-    EXPECT_EQ(dif_${ip.name_snake}_irq_force(
-        nullptr, 
-        static_cast<dif_${ip.name_snake}_irq_t>(32)),
-      kDifBadArg);
-  }
-
-  TEST_F(IrqForceTest, Success) {
-    // Force first IRQ.
-    EXPECT_WRITE32(${ip.name_upper}_INTR_TEST_REG_OFFSET,
-      % if irqs[0].width > 1:
-         {{0, true}});
-      % else:
-         {{${ip.name_upper}_INTR_TEST_${irqs[0].name_upper}_BIT, true}});
-      % endif
-    EXPECT_EQ(dif_${ip.name_snake}_irq_force(
-        &${ip.name_snake}_,
-      % if irqs[0].width > 1:
-        kDif${ip.name_camel}Irq${irqs[0].name_camel}0),
-      % else:
-        kDif${ip.name_camel}Irq${irqs[0].name_camel}),
-      % endif
-      kDifOk);
-
-  % if len(irqs) > 1 or irqs[0].width > 1:
-    // Force last IRQ.
-    EXPECT_WRITE32(${ip.name_upper}_INTR_TEST_REG_OFFSET,
-      % if irqs[0].width > 1:
-        {{${irqs[0].width - 1}, true}});
-      % else:
-        {{${ip.name_upper}_INTR_TEST_${irqs[-1].name_upper}_BIT, true}});
-      % endif
-    EXPECT_EQ(dif_${ip.name_snake}_irq_force(
-        &${ip.name_snake}_,
-      % if irqs[0].width > 1:
-        kDif${ip.name_camel}Irq${irqs[-1].name_camel}${irqs[0].width - 1}),
-      % else:
-        kDif${ip.name_camel}Irq${irqs[-1].name_camel}),
-      % endif
       kDifOk);
   % endif
   }
@@ -450,19 +543,32 @@ namespace {
 
     EXPECT_EQ(dif_${ip.name_snake}_irq_disable_all(
         nullptr, 
+      % if ip.name_snake == "rv_timer":
+        0,
+      % endif
         &irq_snapshot),
       kDifBadArg);
 
     EXPECT_EQ(dif_${ip.name_snake}_irq_disable_all(
         nullptr, 
+      % if ip.name_snake == "rv_timer":
+        0,
+      % endif
         nullptr),
       kDifBadArg);
   }
 
   TEST_F(IrqDisableAllTest, SuccessNoSnapshot) {
+  % if ip.name_snake == "rv_timer":
+    EXPECT_WRITE32(${ip.name_upper}_INTR_ENABLE0_REG_OFFSET, 0);
+  % else:
     EXPECT_WRITE32(${ip.name_upper}_INTR_ENABLE_REG_OFFSET, 0);
+  % endif
     EXPECT_EQ(dif_${ip.name_snake}_irq_disable_all(
         &${ip.name_snake}_, 
+      % if ip.name_snake == "rv_timer":
+        0,
+      % endif
         nullptr),
       kDifOk);
   }
@@ -470,10 +576,18 @@ namespace {
   TEST_F(IrqDisableAllTest, SuccessSnapshotAllDisabled) {
     dif_${ip.name_snake}_irq_enable_snapshot_t irq_snapshot = 0;
 
+  % if ip.name_snake == "rv_timer":
+    EXPECT_READ32(${ip.name_upper}_INTR_ENABLE0_REG_OFFSET, 0);
+    EXPECT_WRITE32(${ip.name_upper}_INTR_ENABLE0_REG_OFFSET, 0);
+  % else:
     EXPECT_READ32(${ip.name_upper}_INTR_ENABLE_REG_OFFSET, 0);
     EXPECT_WRITE32(${ip.name_upper}_INTR_ENABLE_REG_OFFSET, 0);
+  % endif
     EXPECT_EQ(dif_${ip.name_snake}_irq_disable_all(
         &${ip.name_snake}_, 
+      % if ip.name_snake == "rv_timer":
+        0,
+      % endif
         &irq_snapshot),
       kDifOk);
     EXPECT_EQ(irq_snapshot, 0);
@@ -482,11 +596,20 @@ namespace {
   TEST_F(IrqDisableAllTest, SuccessSnapshotAllEnabled) {
     dif_${ip.name_snake}_irq_enable_snapshot_t irq_snapshot = 0;
 
+  % if ip.name_snake == "rv_timer":
+    EXPECT_READ32(${ip.name_upper}_INTR_ENABLE0_REG_OFFSET,
+                  std::numeric_limits<uint32_t>::max());
+    EXPECT_WRITE32(${ip.name_upper}_INTR_ENABLE0_REG_OFFSET, 0);
+  % else:
     EXPECT_READ32(${ip.name_upper}_INTR_ENABLE_REG_OFFSET,
                   std::numeric_limits<uint32_t>::max());
     EXPECT_WRITE32(${ip.name_upper}_INTR_ENABLE_REG_OFFSET, 0);
+  % endif
     EXPECT_EQ(dif_${ip.name_snake}_irq_disable_all(
         &${ip.name_snake}_, 
+      % if ip.name_snake == "rv_timer":
+        0,
+      % endif
         &irq_snapshot),
       kDifOk);
     EXPECT_EQ(irq_snapshot, std::numeric_limits<uint32_t>::max());
@@ -499,16 +622,25 @@ namespace {
 
     EXPECT_EQ(dif_${ip.name_snake}_irq_restore_all(
         nullptr, 
+      % if ip.name_snake == "rv_timer":
+        0,
+      % endif
         &irq_snapshot),
       kDifBadArg);
 
     EXPECT_EQ(dif_${ip.name_snake}_irq_restore_all(
         &${ip.name_snake}_, 
+      % if ip.name_snake == "rv_timer":
+        0,
+      % endif
         nullptr),
       kDifBadArg);
 
     EXPECT_EQ(dif_${ip.name_snake}_irq_restore_all(
         nullptr, 
+      % if ip.name_snake == "rv_timer":
+        0,
+      % endif
         nullptr),
       kDifBadArg);
   }
@@ -517,10 +649,17 @@ namespace {
     dif_${ip.name_snake}_irq_enable_snapshot_t irq_snapshot = 
       std::numeric_limits<uint32_t>::max();
 
+  % if ip.name_snake == "rv_timer":
+    EXPECT_WRITE32(${ip.name_upper}_INTR_ENABLE0_REG_OFFSET, 
+  % else:
     EXPECT_WRITE32(${ip.name_upper}_INTR_ENABLE_REG_OFFSET, 
+  % endif
       std::numeric_limits<uint32_t>::max());
     EXPECT_EQ(dif_${ip.name_snake}_irq_restore_all(
         &${ip.name_snake}_, 
+      % if ip.name_snake == "rv_timer":
+        0,
+      % endif
         &irq_snapshot),
       kDifOk);
   }
@@ -528,12 +667,20 @@ namespace {
   TEST_F(IrqRestoreAllTest, SuccessAllDisabled) {
     dif_${ip.name_snake}_irq_enable_snapshot_t irq_snapshot = 0;
 
+  % if ip.name_snake == "rv_timer":
+    EXPECT_WRITE32(${ip.name_upper}_INTR_ENABLE0_REG_OFFSET, 0);
+  % else:
     EXPECT_WRITE32(${ip.name_upper}_INTR_ENABLE_REG_OFFSET, 0);
+  % endif
     EXPECT_EQ(dif_${ip.name_snake}_irq_restore_all(
         &${ip.name_snake}_, 
+  % if ip.name_snake == "rv_timer":
+        0,
+  % endif
         &irq_snapshot),
       kDifOk);
   }
+% endif
 
 % endif
 

@@ -4,7 +4,7 @@
 
 // This file is auto-generated.
 
-#include "sw/device/lib/dif/dif_alert_handler.h"
+#include "sw/device/lib/dif/autogen/dif_alert_handler_autogen.h"
 
 #include "gtest/gtest.h"
 #include "sw/device/lib/base/mmio.h"
@@ -16,6 +16,7 @@ namespace dif_alert_handler_autogen_unittest {
 namespace {
 using ::mock_mmio::MmioTest;
 using ::mock_mmio::MockDevice;
+using ::testing::Eq;
 using ::testing::Test;
 
 class AlertHandlerTest : public Test, public MmioTest {
@@ -23,7 +24,18 @@ class AlertHandlerTest : public Test, public MmioTest {
   dif_alert_handler_t alert_handler_ = {.base_addr = dev().region()};
 };
 
-using ::testing::Eq;
+class InitTest : public AlertHandlerTest {};
+
+TEST_F(InitTest, NullArgs) {
+  EXPECT_EQ(dif_alert_handler_init({.base_addr = dev().region()}, nullptr),
+            kDifBadArg);
+}
+
+TEST_F(InitTest, Success) {
+  EXPECT_EQ(
+      dif_alert_handler_init({.base_addr = dev().region()}, &alert_handler_),
+      kDifOk);
+}
 
 class IrqGetStateTest : public AlertHandlerTest {};
 
@@ -137,6 +149,35 @@ TEST_F(IrqAcknowledgeTest, Success) {
             kDifOk);
 }
 
+class IrqForceTest : public AlertHandlerTest {};
+
+TEST_F(IrqForceTest, NullArgs) {
+  EXPECT_EQ(dif_alert_handler_irq_force(nullptr, kDifAlertHandlerIrqClassa),
+            kDifBadArg);
+}
+
+TEST_F(IrqForceTest, BadIrq) {
+  EXPECT_EQ(dif_alert_handler_irq_force(
+                nullptr, static_cast<dif_alert_handler_irq_t>(32)),
+            kDifBadArg);
+}
+
+TEST_F(IrqForceTest, Success) {
+  // Force first IRQ.
+  EXPECT_WRITE32(ALERT_HANDLER_INTR_TEST_REG_OFFSET,
+                 {{ALERT_HANDLER_INTR_TEST_CLASSA_BIT, true}});
+  EXPECT_EQ(
+      dif_alert_handler_irq_force(&alert_handler_, kDifAlertHandlerIrqClassa),
+      kDifOk);
+
+  // Force last IRQ.
+  EXPECT_WRITE32(ALERT_HANDLER_INTR_TEST_REG_OFFSET,
+                 {{ALERT_HANDLER_INTR_TEST_CLASSD_BIT, true}});
+  EXPECT_EQ(
+      dif_alert_handler_irq_force(&alert_handler_, kDifAlertHandlerIrqClassd),
+      kDifOk);
+}
+
 class IrqGetEnabledTest : public AlertHandlerTest {};
 
 TEST_F(IrqGetEnabledTest, NullArgs) {
@@ -223,35 +264,6 @@ TEST_F(IrqSetEnabledTest, Success) {
   EXPECT_EQ(dif_alert_handler_irq_set_enabled(
                 &alert_handler_, kDifAlertHandlerIrqClassd, irq_state),
             kDifOk);
-}
-
-class IrqForceTest : public AlertHandlerTest {};
-
-TEST_F(IrqForceTest, NullArgs) {
-  EXPECT_EQ(dif_alert_handler_irq_force(nullptr, kDifAlertHandlerIrqClassa),
-            kDifBadArg);
-}
-
-TEST_F(IrqForceTest, BadIrq) {
-  EXPECT_EQ(dif_alert_handler_irq_force(
-                nullptr, static_cast<dif_alert_handler_irq_t>(32)),
-            kDifBadArg);
-}
-
-TEST_F(IrqForceTest, Success) {
-  // Force first IRQ.
-  EXPECT_WRITE32(ALERT_HANDLER_INTR_TEST_REG_OFFSET,
-                 {{ALERT_HANDLER_INTR_TEST_CLASSA_BIT, true}});
-  EXPECT_EQ(
-      dif_alert_handler_irq_force(&alert_handler_, kDifAlertHandlerIrqClassa),
-      kDifOk);
-
-  // Force last IRQ.
-  EXPECT_WRITE32(ALERT_HANDLER_INTR_TEST_REG_OFFSET,
-                 {{ALERT_HANDLER_INTR_TEST_CLASSD_BIT, true}});
-  EXPECT_EQ(
-      dif_alert_handler_irq_force(&alert_handler_, kDifAlertHandlerIrqClassd),
-      kDifOk);
 }
 
 class IrqDisableAllTest : public AlertHandlerTest {};

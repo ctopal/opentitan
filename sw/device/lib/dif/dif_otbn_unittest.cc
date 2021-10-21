@@ -27,23 +27,8 @@ class OtbnTest : public Test, public MmioTest {
                    std::numeric_limits<uint32_t>::max());
   }
 
-  mmio_region_t base_addr_ = dev().region();
-  dif_otbn_t dif_otbn_ = {
-      /* base_addr = */ base_addr_,
-  };
+  dif_otbn_t dif_otbn_ = {.base_addr = dev().region()};
 };
-
-class InitTest : public OtbnTest {};
-
-TEST_F(InitTest, NullArgs) {
-  EXPECT_EQ(dif_otbn_init(base_addr_, nullptr), kDifBadArg);
-}
-
-TEST_F(InitTest, Default) {
-  ExpectDeviceReset();
-
-  EXPECT_EQ(dif_otbn_init(base_addr_, &dif_otbn_), kDifOk);
-}
 
 class ResetTest : public OtbnTest {};
 
@@ -384,6 +369,27 @@ TEST_F(DmemReadTest, SuccessWithOffset) {
   EXPECT_EQ(dif_otbn_dmem_read(&dif_otbn_, 4, test_data, 8), kDifOk);
   EXPECT_EQ(test_data[0], 0x12345678);
   EXPECT_EQ(test_data[1], 0xabcdef01);
+}
+
+class ControlSoftwareErrorsFatalTest : public OtbnTest {};
+
+TEST_F(ControlSoftwareErrorsFatalTest, NullArgs) {
+  EXPECT_EQ(dif_otbn_set_ctrl_software_errs_fatal(nullptr, false), kDifBadArg);
+}
+
+TEST_F(ControlSoftwareErrorsFatalTest, Success) {
+  EXPECT_WRITE32(OTBN_CTRL_REG_OFFSET, 0x1);
+  EXPECT_READ32(OTBN_CTRL_REG_OFFSET, 0x1);
+
+  EXPECT_EQ(dif_otbn_set_ctrl_software_errs_fatal(&dif_otbn_, true), kDifOk);
+}
+
+TEST_F(ControlSoftwareErrorsFatalTest, Failure) {
+  EXPECT_WRITE32(OTBN_CTRL_REG_OFFSET, 0x0);
+  EXPECT_READ32(OTBN_CTRL_REG_OFFSET, 0x1);
+
+  EXPECT_EQ(dif_otbn_set_ctrl_software_errs_fatal(&dif_otbn_, false),
+            kDifUnavailable);
 }
 
 }  // namespace

@@ -25,7 +25,7 @@ The life cycle controller provides the following features:
 - A CSR and a JTAG interface for initiating life cycle transitions.
 - Dedicated concurrent decoding of the redundant life cycle state and broadcasting of redundantly encoded life cycle qualification signals (e.g., to enable DFT features or the main processor).
 - A token hashing and matching mechanism to guard important life cycle transitions.
-- An escalation receiver for the alert subsystem, which allows to invalidate the life cycle state as part of an escalation sequence (see also [alert handler subsystem]({{< relref "hw/ip/alert_handler/doc" >}})).
+- An escalation receiver for the alert subsystem, which allows to invalidate the life cycle state as part of an escalation sequence (see also alert handler subsystem).
 
 ## Prelude - Why Not Software?
 
@@ -123,7 +123,7 @@ This general policy places a time-bound on how quickly life cycle states can cha
 
 ## Security Escalation
 
-The life cycle controller contains two escalation paths that are connected to [escalation severities 1 and 2 of the alert handler]({{< relref "hw/ip/alert_handler/doc/_index.md#escalation-signaling" >}}).
+The life cycle controller contains two escalation paths that are connected to escalation severities 1 and 2 of the alert handler.
 
 The two escalation paths are redundant, and both trigger the same mechanism.
 Upon assertion of any of the two escalation actions, the life cycle state is **TEMPORARILY** altered.
@@ -131,7 +131,7 @@ I.e. when this escalation path is triggered, the life cycle state is transitione
 This causes [all decoded outputs]({{< relref "#life-cycle-decoded-outputs-and-controls" >}}) to be disabled until the next power cycle.
 In addition to that, the life cycle controller asserts the ESCALATE_EN life cycle signal which is distributed to all IPs in the design that expose an escalation action (like moving FSMs into terminal error states or clearing sensitive registers).
 
-Whether to escalate to the life cycle controller or not is a software decision, please see the [alert handler]({{< relref "hw/ip/alert_handler/doc/_index.md" >}}) for more details.
+Whether to escalate to the life cycle controller or not is a software decision, please see the alert handler for more details.
 
 ## Life Cycle Decoded Outputs and Controls
 
@@ -484,7 +484,7 @@ Note that the two additional life cycle control signals `lc_flash_rma_req_o` and
 The life cycle controller contains a JTAG TAP that can be used to access the same CSR space that is accessible via TL-UL.
 In order to write to the CSRs, a [hardware mutex]({{< relref "#hardware-mutex" >}}) has to be claimed.
 
-The life cycle controller also contains two escalation receivers that are connected to escalation severity 1 and 2 of the [alert handler module]({{< relref "hw/ip/alert_handler/doc" >}}).
+The life cycle controller also contains two escalation receivers that are connected to escalation severity 1 and 2 of the alert handler module.
 The actions that are triggered by these escalation receivers are explained in the [escalation handling section]({{< relref "#escalation-handling" >}}) below.
 
 ### System Integration
@@ -565,7 +565,7 @@ Note that an initiated life cycle transition request always ends in `PostTransSt
 
 #### Escalation Handling
 
-The life cycle controller contains two escalation channels that are connected to the [alert handler]({{< relref "hw/ip/alert_handler/doc" >}}).
+The life cycle controller contains two escalation channels that are connected to the alert handler.
 
 When the first channel `esc_wipe_secrets` is asserted, the life cycle controller permanently asserts the `lc_escalate_en` life cycle signal.
 That signal is routed to various security modules in OpenTitan and triggers local wiping and invalidation features.
@@ -602,8 +602,8 @@ See diagram below.
 
 ![LC Request Interface](lc_ctrl_request_interface.svg)
 
-In order to claim the hardware mutex, the value 0xA5 must be written to the claim register ({{< regref "CLAIM_TRANSITION_IF" >}}).
-If the register reads back as 0xA5, then the mutex is claimed, and the interface that won arbitration can continue operations.
+In order to claim the hardware mutex, the value 0x5A must be written to the claim register ({{< regref "CLAIM_TRANSITION_IF" >}}).
+If the register reads back as 0x5A, then the mutex is claimed, and the interface that won arbitration can continue operations.
 If the value is not read back, then the requesting interface should wait and try again later.
 
 When an agent is done with the mutex, it releases the mutex by explicitly writing a 0 to the claim register.
@@ -647,7 +647,7 @@ Hence the following programming sequence applies to both SW running on the devic
 
 2. Read the {{< regref "LC_STATE" >}} and {{< regref "LC_TRANSITION_CNT" >}} registers to determine which life cycle state the device currently is in, and how many transition attempts are still available.
 
-3. Claim exclusive access to the transition interface by writing 0xA5 to the {{< regref "CLAIM_TRANSITION_IF" >}} register, and reading it back. If the value read back equals to 0xA5, the hardware mutex has successfully been claimed and SW can proceed to step 4. If the value read back equals to 0, the mutex has already been claimed by the other interface (either CSR or TAP), and SW should try claiming the mutex again.
+3. Claim exclusive access to the transition interface by writing 0x5A to the {{< regref "CLAIM_TRANSITION_IF" >}} register, and reading it back. If the value read back equals to 0x5A, the hardware mutex has successfully been claimed and SW can proceed to step 4. If the value read back equals to 0, the mutex has already been claimed by the other interface (either CSR or TAP), and SW should try claiming the mutex again.
 
 4. Write the desired target state to {{< regref "TRANSITION_TARGET" >}}. For conditional transitions, the corresponding token has to be written to {{< regref "TRANSITION_TOKEN_0" >}}. For all unconditional transitions, the token registers have to be set to zero.
 
@@ -670,4 +670,3 @@ It is expected that the JTAG TAP interface is used to access the life cycle tran
 ## Register Table
 
 {{< incGenFromIpDesc "../data/lc_ctrl.hjson" "registers" >}}
-

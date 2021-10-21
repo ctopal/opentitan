@@ -28,6 +28,9 @@ class MirroredRegs {
 
   // The final PC from the most recent run
   uint32_t stop_pc;
+
+  // Execution is stopped if status is either 0 (IDLE) or 0xff (LOCKED)
+  bool stopped() const { return status == 0 || status == 0xff; }
 };
 
 // An object wrapping the ISS subprocess.
@@ -82,6 +85,9 @@ struct ISSWrapper {
   // finishes (so we return 1), also updates mirrored versions of ERR_BITS and
   // the final PC (see get_stop_pc()).
   int step(bool gen_trace);
+
+  // Mark all of IMEM as invalid so that any fetch causes an integrity error.
+  void invalidate_imem();
 
   // Reset simulation
   //

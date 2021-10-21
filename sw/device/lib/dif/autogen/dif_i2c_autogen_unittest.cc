@@ -4,7 +4,7 @@
 
 // This file is auto-generated.
 
-#include "sw/device/lib/dif/dif_i2c.h"
+#include "sw/device/lib/dif/autogen/dif_i2c_autogen.h"
 
 #include "gtest/gtest.h"
 #include "sw/device/lib/base/mmio.h"
@@ -16,6 +16,7 @@ namespace dif_i2c_autogen_unittest {
 namespace {
 using ::mock_mmio::MmioTest;
 using ::mock_mmio::MockDevice;
+using ::testing::Eq;
 using ::testing::Test;
 
 class I2cTest : public Test, public MmioTest {
@@ -23,7 +24,15 @@ class I2cTest : public Test, public MmioTest {
   dif_i2c_t i2c_ = {.base_addr = dev().region()};
 };
 
-using ::testing::Eq;
+class InitTest : public I2cTest {};
+
+TEST_F(InitTest, NullArgs) {
+  EXPECT_EQ(dif_i2c_init({.base_addr = dev().region()}, nullptr), kDifBadArg);
+}
+
+TEST_F(InitTest, Success) {
+  EXPECT_EQ(dif_i2c_init({.base_addr = dev().region()}, &i2c_), kDifOk);
+}
 
 class IrqGetStateTest : public I2cTest {};
 
@@ -122,6 +131,29 @@ TEST_F(IrqAcknowledgeTest, Success) {
   EXPECT_EQ(dif_i2c_irq_acknowledge(&i2c_, kDifI2cIrqHostTimeout), kDifOk);
 }
 
+class IrqForceTest : public I2cTest {};
+
+TEST_F(IrqForceTest, NullArgs) {
+  EXPECT_EQ(dif_i2c_irq_force(nullptr, kDifI2cIrqFmtWatermark), kDifBadArg);
+}
+
+TEST_F(IrqForceTest, BadIrq) {
+  EXPECT_EQ(dif_i2c_irq_force(nullptr, static_cast<dif_i2c_irq_t>(32)),
+            kDifBadArg);
+}
+
+TEST_F(IrqForceTest, Success) {
+  // Force first IRQ.
+  EXPECT_WRITE32(I2C_INTR_TEST_REG_OFFSET,
+                 {{I2C_INTR_TEST_FMT_WATERMARK_BIT, true}});
+  EXPECT_EQ(dif_i2c_irq_force(&i2c_, kDifI2cIrqFmtWatermark), kDifOk);
+
+  // Force last IRQ.
+  EXPECT_WRITE32(I2C_INTR_TEST_REG_OFFSET,
+                 {{I2C_INTR_TEST_HOST_TIMEOUT_BIT, true}});
+  EXPECT_EQ(dif_i2c_irq_force(&i2c_, kDifI2cIrqHostTimeout), kDifOk);
+}
+
 class IrqGetEnabledTest : public I2cTest {};
 
 TEST_F(IrqGetEnabledTest, NullArgs) {
@@ -199,29 +231,6 @@ TEST_F(IrqSetEnabledTest, Success) {
                 {{I2C_INTR_ENABLE_HOST_TIMEOUT_BIT, 0x1, false}});
   EXPECT_EQ(dif_i2c_irq_set_enabled(&i2c_, kDifI2cIrqHostTimeout, irq_state),
             kDifOk);
-}
-
-class IrqForceTest : public I2cTest {};
-
-TEST_F(IrqForceTest, NullArgs) {
-  EXPECT_EQ(dif_i2c_irq_force(nullptr, kDifI2cIrqFmtWatermark), kDifBadArg);
-}
-
-TEST_F(IrqForceTest, BadIrq) {
-  EXPECT_EQ(dif_i2c_irq_force(nullptr, static_cast<dif_i2c_irq_t>(32)),
-            kDifBadArg);
-}
-
-TEST_F(IrqForceTest, Success) {
-  // Force first IRQ.
-  EXPECT_WRITE32(I2C_INTR_TEST_REG_OFFSET,
-                 {{I2C_INTR_TEST_FMT_WATERMARK_BIT, true}});
-  EXPECT_EQ(dif_i2c_irq_force(&i2c_, kDifI2cIrqFmtWatermark), kDifOk);
-
-  // Force last IRQ.
-  EXPECT_WRITE32(I2C_INTR_TEST_REG_OFFSET,
-                 {{I2C_INTR_TEST_HOST_TIMEOUT_BIT, true}});
-  EXPECT_EQ(dif_i2c_irq_force(&i2c_, kDifI2cIrqHostTimeout), kDifOk);
 }
 
 class IrqDisableAllTest : public I2cTest {};

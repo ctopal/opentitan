@@ -4,41 +4,53 @@
 
 // This file is auto-generated.
 
-#include "sw/device/lib/dif/dif_uart.h"
+#include "sw/device/lib/dif/autogen/dif_uart_autogen.h"
 
 #include "uart_regs.h"  // Generated.
 
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_uart_init(mmio_region_t base_addr, dif_uart_t *uart) {
+  if (uart == NULL) {
+    return kDifBadArg;
+  }
+
+  uart->base_addr = base_addr;
+
+  return kDifOk;
+}
+
 /**
- * Get the corresponding interrupt register bit offset. INTR_STATE,
- * INTR_ENABLE and INTR_TEST registers have the same bit offsets, so this
- * routine can be reused.
+ * Get the corresponding interrupt register bit offset of the IRQ. If the IP's
+ * HJSON does NOT have a field "no_auto_intr_regs = true", then the
+ * "<ip>_INTR_COMMON_<irq>_BIT" macro can used. Otherwise, special cases will
+ * exist, as templated below.
  */
 static bool uart_get_irq_bit_index(dif_uart_irq_t irq,
                                    bitfield_bit32_index_t *index_out) {
   switch (irq) {
     case kDifUartIrqTxWatermark:
-      *index_out = UART_INTR_STATE_TX_WATERMARK_BIT;
+      *index_out = UART_INTR_COMMON_TX_WATERMARK_BIT;
       break;
     case kDifUartIrqRxWatermark:
-      *index_out = UART_INTR_STATE_RX_WATERMARK_BIT;
+      *index_out = UART_INTR_COMMON_RX_WATERMARK_BIT;
       break;
     case kDifUartIrqTxEmpty:
-      *index_out = UART_INTR_STATE_TX_EMPTY_BIT;
+      *index_out = UART_INTR_COMMON_TX_EMPTY_BIT;
       break;
     case kDifUartIrqRxOverflow:
-      *index_out = UART_INTR_STATE_RX_OVERFLOW_BIT;
+      *index_out = UART_INTR_COMMON_RX_OVERFLOW_BIT;
       break;
     case kDifUartIrqRxFrameErr:
-      *index_out = UART_INTR_STATE_RX_FRAME_ERR_BIT;
+      *index_out = UART_INTR_COMMON_RX_FRAME_ERR_BIT;
       break;
     case kDifUartIrqRxBreakErr:
-      *index_out = UART_INTR_STATE_RX_BREAK_ERR_BIT;
+      *index_out = UART_INTR_COMMON_RX_BREAK_ERR_BIT;
       break;
     case kDifUartIrqRxTimeout:
-      *index_out = UART_INTR_STATE_RX_TIMEOUT_BIT;
+      *index_out = UART_INTR_COMMON_RX_TIMEOUT_BIT;
       break;
     case kDifUartIrqRxParityErr:
-      *index_out = UART_INTR_STATE_RX_PARITY_ERR_BIT;
+      *index_out = UART_INTR_COMMON_RX_PARITY_ERR_BIT;
       break;
     default:
       return false;
@@ -100,6 +112,24 @@ dif_result_t dif_uart_irq_acknowledge(const dif_uart_t *uart,
 }
 
 OT_WARN_UNUSED_RESULT
+dif_result_t dif_uart_irq_force(const dif_uart_t *uart, dif_uart_irq_t irq) {
+  if (uart == NULL) {
+    return kDifBadArg;
+  }
+
+  bitfield_bit32_index_t index;
+  if (!uart_get_irq_bit_index(irq, &index)) {
+    return kDifBadArg;
+  }
+
+  uint32_t intr_test_reg = bitfield_bit32_write(0, index, true);
+  mmio_region_write32(uart->base_addr, UART_INTR_TEST_REG_OFFSET,
+                      intr_test_reg);
+
+  return kDifOk;
+}
+
+OT_WARN_UNUSED_RESULT
 dif_result_t dif_uart_irq_get_enabled(const dif_uart_t *uart,
                                       dif_uart_irq_t irq, dif_toggle_t *state) {
   if (uart == NULL || state == NULL) {
@@ -139,24 +169,6 @@ dif_result_t dif_uart_irq_set_enabled(const dif_uart_t *uart,
   intr_enable_reg = bitfield_bit32_write(intr_enable_reg, index, enable_bit);
   mmio_region_write32(uart->base_addr, UART_INTR_ENABLE_REG_OFFSET,
                       intr_enable_reg);
-
-  return kDifOk;
-}
-
-OT_WARN_UNUSED_RESULT
-dif_result_t dif_uart_irq_force(const dif_uart_t *uart, dif_uart_irq_t irq) {
-  if (uart == NULL) {
-    return kDifBadArg;
-  }
-
-  bitfield_bit32_index_t index;
-  if (!uart_get_irq_bit_index(irq, &index)) {
-    return kDifBadArg;
-  }
-
-  uint32_t intr_test_reg = bitfield_bit32_write(0, index, true);
-  mmio_region_write32(uart->base_addr, UART_INTR_TEST_REG_OFFSET,
-                      intr_test_reg);
 
   return kDifOk;
 }

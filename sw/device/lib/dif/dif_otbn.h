@@ -26,9 +26,9 @@ extern "C" {
  * OTBN commands
  */
 typedef enum dif_otbn_cmd {
-  kDifOtbnCmdExecute = 0x01,
-  kDifOtbnCmdSecWipeDmem = 0x02,
-  kDifOtbnCmdSecWipeImem = 0x03,
+  kDifOtbnCmdExecute = 0xd8,
+  kDifOtbnCmdSecWipeDmem = 0xc3,
+  kDifOtbnCmdSecWipeImem = 0x1e,
 } dif_otbn_cmd_t;
 
 /**
@@ -76,19 +76,6 @@ typedef enum dif_otbn_err_bits {
   /** A FATAL_SOFTWARE error was observed. */
   kDifOtbnErrBitsFatalSoftware = (1 << 22),
 } dif_otbn_err_bits_t;
-
-/**
- * Initialize a OTBN device using `config` and return its internal state.
- *
- * A particular OTBN device must first be initialized by this function
- * before calling other functions of this library.
- *
- * @param base_addr Hardware instantiation base address.
- * @param[out] otbn OTBN instance that will store the internal state of the
- *             initialized OTBN device.
- * @return The result of the operation.
- */
-dif_result_t dif_otbn_init(mmio_region_t base_addr, dif_otbn_t *otbn);
 
 /**
  * Reset OTBN device.
@@ -198,6 +185,20 @@ dif_result_t dif_otbn_dmem_write(const dif_otbn_t *otbn, uint32_t offset_bytes,
  */
 dif_result_t dif_otbn_dmem_read(const dif_otbn_t *otbn, uint32_t offset_bytes,
                                 void *dest, size_t len_bytes);
+
+/**
+ * Sets the software errors are fatal bit in the control register.
+ *
+ * When set any software error becomes a fatal error. The bit can only be
+ * changed when the OTBN status is IDLE.
+ *
+ * @param otbn OTBN instance
+ * @param enable Enable or disable whether software errors are fatal.
+ * @return The result of the operation, `kDifUnavailable` is returned when the
+ * requested change cannot be made.
+ */
+dif_result_t dif_otbn_set_ctrl_software_errs_fatal(const dif_otbn_t *otbn,
+                                                   bool enable);
 
 /**
  * Get the size of OTBN's data memory in bytes.

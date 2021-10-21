@@ -36,6 +36,18 @@ typedef struct dif_gpio {
 } dif_gpio_t;
 
 /**
+ * Creates a new handle for a(n) gpio peripheral.
+ *
+ * This function does not actuate the hardware.
+ *
+ * @param base_addr The MMIO base address of the gpio peripheral.
+ * @param[out] gpio Out param for the initialized handle.
+ * @return The result of the operation.
+ */
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_gpio_init(mmio_region_t base_addr, dif_gpio_t *gpio);
+
+/**
  * A gpio interrupt request type.
  */
 typedef enum dif_gpio_irq {
@@ -85,15 +97,6 @@ typedef enum dif_gpio_irq {
 typedef uint32_t dif_gpio_irq_state_snapshot_t;
 
 /**
- * A snapshot of the enablement state of the interrupts for this IP.
- *
- * This is an opaque type, to be used with the
- * `dif_gpio_irq_disable_all()` and `dif_gpio_irq_restore_all()`
- * functions.
- */
-typedef uint32_t dif_gpio_irq_enable_snapshot_t;
-
-/**
  * Returns whether a particular interrupt is currently pending.
  *
  * @param gpio A gpio handle.
@@ -129,6 +132,26 @@ dif_result_t dif_gpio_irq_acknowledge(const dif_gpio_t *gpio,
                                       dif_gpio_irq_t irq);
 
 /**
+ * Forces a particular interrupt, causing it to be serviced as if hardware had
+ * asserted it.
+ *
+ * @param gpio A gpio handle.
+ * @param irq An interrupt request.
+ * @return The result of the operation.
+ */
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_gpio_irq_force(const dif_gpio_t *gpio, dif_gpio_irq_t irq);
+
+/**
+ * A snapshot of the enablement state of the interrupts for this IP.
+ *
+ * This is an opaque type, to be used with the
+ * `dif_gpio_irq_disable_all()` and `dif_gpio_irq_restore_all()`
+ * functions.
+ */
+typedef uint32_t dif_gpio_irq_enable_snapshot_t;
+
+/**
  * Checks whether a particular interrupt is currently enabled or disabled.
  *
  * @param gpio A gpio handle.
@@ -151,17 +174,6 @@ dif_result_t dif_gpio_irq_get_enabled(const dif_gpio_t *gpio,
 OT_WARN_UNUSED_RESULT
 dif_result_t dif_gpio_irq_set_enabled(const dif_gpio_t *gpio,
                                       dif_gpio_irq_t irq, dif_toggle_t state);
-
-/**
- * Forces a particular interrupt, causing it to be serviced as if hardware had
- * asserted it.
- *
- * @param gpio A gpio handle.
- * @param irq An interrupt request.
- * @return The result of the operation.
- */
-OT_WARN_UNUSED_RESULT
-dif_result_t dif_gpio_irq_force(const dif_gpio_t *gpio, dif_gpio_irq_t irq);
 
 /**
  * Disables all interrupts, optionally snapshotting all enable states for later

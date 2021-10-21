@@ -4,29 +4,42 @@
 
 // This file is auto-generated.
 
-#include "sw/device/lib/dif/dif_alert_handler.h"
+#include "sw/device/lib/dif/autogen/dif_alert_handler_autogen.h"
 
 #include "alert_handler_regs.h"  // Generated.
 
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_alert_handler_init(mmio_region_t base_addr,
+                                    dif_alert_handler_t *alert_handler) {
+  if (alert_handler == NULL) {
+    return kDifBadArg;
+  }
+
+  alert_handler->base_addr = base_addr;
+
+  return kDifOk;
+}
+
 /**
- * Get the corresponding interrupt register bit offset. INTR_STATE,
- * INTR_ENABLE and INTR_TEST registers have the same bit offsets, so this
- * routine can be reused.
+ * Get the corresponding interrupt register bit offset of the IRQ. If the IP's
+ * HJSON does NOT have a field "no_auto_intr_regs = true", then the
+ * "<ip>_INTR_COMMON_<irq>_BIT" macro can used. Otherwise, special cases will
+ * exist, as templated below.
  */
 static bool alert_handler_get_irq_bit_index(dif_alert_handler_irq_t irq,
                                             bitfield_bit32_index_t *index_out) {
   switch (irq) {
     case kDifAlertHandlerIrqClassa:
-      *index_out = ALERT_HANDLER_INTR_STATE_CLASSA_BIT;
+      *index_out = ALERT_HANDLER_INTR_COMMON_CLASSA_BIT;
       break;
     case kDifAlertHandlerIrqClassb:
-      *index_out = ALERT_HANDLER_INTR_STATE_CLASSB_BIT;
+      *index_out = ALERT_HANDLER_INTR_COMMON_CLASSB_BIT;
       break;
     case kDifAlertHandlerIrqClassc:
-      *index_out = ALERT_HANDLER_INTR_STATE_CLASSC_BIT;
+      *index_out = ALERT_HANDLER_INTR_COMMON_CLASSC_BIT;
       break;
     case kDifAlertHandlerIrqClassd:
-      *index_out = ALERT_HANDLER_INTR_STATE_CLASSD_BIT;
+      *index_out = ALERT_HANDLER_INTR_COMMON_CLASSD_BIT;
       break;
     default:
       return false;
@@ -91,6 +104,25 @@ dif_result_t dif_alert_handler_irq_acknowledge(
 }
 
 OT_WARN_UNUSED_RESULT
+dif_result_t dif_alert_handler_irq_force(
+    const dif_alert_handler_t *alert_handler, dif_alert_handler_irq_t irq) {
+  if (alert_handler == NULL) {
+    return kDifBadArg;
+  }
+
+  bitfield_bit32_index_t index;
+  if (!alert_handler_get_irq_bit_index(irq, &index)) {
+    return kDifBadArg;
+  }
+
+  uint32_t intr_test_reg = bitfield_bit32_write(0, index, true);
+  mmio_region_write32(alert_handler->base_addr,
+                      ALERT_HANDLER_INTR_TEST_REG_OFFSET, intr_test_reg);
+
+  return kDifOk;
+}
+
+OT_WARN_UNUSED_RESULT
 dif_result_t dif_alert_handler_irq_get_enabled(
     const dif_alert_handler_t *alert_handler, dif_alert_handler_irq_t irq,
     dif_toggle_t *state) {
@@ -132,25 +164,6 @@ dif_result_t dif_alert_handler_irq_set_enabled(
   intr_enable_reg = bitfield_bit32_write(intr_enable_reg, index, enable_bit);
   mmio_region_write32(alert_handler->base_addr,
                       ALERT_HANDLER_INTR_ENABLE_REG_OFFSET, intr_enable_reg);
-
-  return kDifOk;
-}
-
-OT_WARN_UNUSED_RESULT
-dif_result_t dif_alert_handler_irq_force(
-    const dif_alert_handler_t *alert_handler, dif_alert_handler_irq_t irq) {
-  if (alert_handler == NULL) {
-    return kDifBadArg;
-  }
-
-  bitfield_bit32_index_t index;
-  if (!alert_handler_get_irq_bit_index(irq, &index)) {
-    return kDifBadArg;
-  }
-
-  uint32_t intr_test_reg = bitfield_bit32_write(0, index, true);
-  mmio_region_write32(alert_handler->base_addr,
-                      ALERT_HANDLER_INTR_TEST_REG_OFFSET, intr_test_reg);
 
   return kDifOk;
 }

@@ -82,6 +82,9 @@
     }
   ]
 
+  // exclusion files
+  vcs_cov_excl_files: ["{proj_root}/hw/top_earlgrey/dv/cov/ast_mem_cfg.el"]
+
   // Default iterations for all tests - each test entry can override this.
   reseed: 1
 
@@ -166,6 +169,7 @@
       uvm_test_seq: chip_sw_uart_tx_rx_vseq
       sw_images: ["sw/device/tests/uart_tx_rx_test:1"]
       en_run_modes: ["sw_test_mode"]
+      run_opts: ["+uart_idx=0"]
       reseed: 5
     }
     {
@@ -200,6 +204,13 @@
       run_opts: ["+use_spi_load_bootstrap=1"]
     }
     {
+      name: chip_sw_uart_rand_baudrate
+      uvm_test_seq: chip_sw_uart_rand_baudrate_vseq
+      sw_images: ["sw/device/tests/uart_tx_rx_test:1"]
+      en_run_modes: ["sw_test_mode"]
+      reseed: 20
+    }
+    {
       name: chip_sw_spi_device_tx_rx
       uvm_test_seq: chip_sw_spi_tx_rx_vseq
       sw_images: ["sw/device/tests/spi_tx_rx_test:1"]
@@ -230,6 +241,12 @@
       sw_images: ["sw/device/tests/lc_ctrl_transition_test:1"]
       en_run_modes: ["sw_test_mode"]
       reseed: 15
+    }
+    {
+      name: chip_sw_rstmgr_sw_req
+      uvm_test_seq: chip_sw_base_vseq
+      sw_images: ["sw/device/tests/rstmgr_sw_req_test:1"]
+      en_run_modes: ["sw_test_mode"]
     }
     {
       name: chip_sw_pwrmgr_usbdev_wakeup
@@ -289,7 +306,7 @@
   regressions: [
     {
       name: smoke
-      tests: ["chip_sw_uart_tx_rx"]
+      tests: ["chip_sw_uart_tx_rx", "chip_plic_all_irqs"]
     }
   ]
 }

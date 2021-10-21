@@ -14,6 +14,8 @@ module otbn_controller
   parameter int ImemSizeByte = 4096,
   // Size of the data memory, in bytes
   parameter int DmemSizeByte = 4096,
+  // Enable internal secure wipe
+  parameter bit SecWipeEn  = 1'b0,
 
   localparam int ImemAddrWidth = prim_util_pkg::vbits(ImemSizeByte),
   localparam int DmemAddrWidth = prim_util_pkg::vbits(DmemSizeByte)
@@ -22,7 +24,6 @@ module otbn_controller
   input  logic  rst_ni,
 
   input  logic  start_i, // start the processing at address zero
-  output logic  done_o,  // processing done, signaled by ECALL or error occurring
   output logic  locked_o, // OTBN in locked state and must be reset to perform any further actions
 
   output err_bits_t err_bits_o, // valid when done_o is asserted
@@ -122,15 +123,22 @@ module otbn_controller
   output logic rnd_prefetch_req_o,
   input  logic rnd_valid_i,
 
+  // Secure Wipe
+  input  logic secure_wipe_running_i,
+  output logic start_secure_wipe_o,
+  input  logic sec_wipe_zero_i,
+
   input  logic        state_reset_i,
   output logic [31:0] insn_cnt_o,
   input  logic        bus_intg_violation_i,
   input  logic        illegal_bus_access_i,
-  input  logic        lifecycle_escalation_i
+  input  logic        lifecycle_escalation_i,
+  input  logic        software_errs_fatal_i
 );
-  otbn_state_e state_q, state_d, state_raw;
+  otbn_state_e state_q, state_d;
 
   logic err;
+  logic software_err;
   logic fatal_err;
   logic done_complete;
   logic executing;
@@ -196,6 +204,7 @@ module otbn_controller
   // Loop control, used to start a new loop
   logic        loop_start_req;
   logic        loop_start_commit;
+  logic        loop_reset;
   logic [11:0] loop_bodysize;
   logic [31:0] loop_iterations;
 
@@ -217,6 +226,7 @@ module otbn_controller
   logic [31:0] insn_cnt_d, insn_cnt_q;
 
   logic [4:0] ld_insn_bignum_wr_addr_q;
+  err_bits_t err_bits;
 
   // Stall a cycle on loads to allow load data writeback to happen the following cycle. Stall not
   // required on stores as there is no response to deal with.
@@ -236,12 +246,13 @@ module otbn_controller
   //
   // The calculation that ecall triggered done is factored out as `done_complete` to avoid logic
   // loops in the error handling logic.
-  assign done_complete = (insn_valid_i && insn_dec_shared_i.ecall_insn);
+  assign done_complete = (insn_valid_i & insn_dec_shared_i.ecall_insn);
   assign executing = (state_q == OtbnStateUrndRefresh) ||
                      (state_q == OtbnStateRun) ||
                      (state_q == OtbnStateStall);
-  assign done_o = executing & (done_complete | err);
+
   assign locked_o = state_q == OtbnStateLocked;
+  assign start_secure_wipe_o = executing & (done_complete | err) & ~secure_wipe_running_i;
 
   assign jump_or_branch = (insn_valid_i &
                            (insn_dec_shared_i.branch_insn | insn_dec_shared_i.jump_insn));
@@ -259,9 +270,9 @@ module otbn_controller
   assign next_insn_addr = next_insn_addr_wide[ImemAddrWidth-1:0];
 
   always_comb begin
-    // `state_raw` and `insn_fetch_req_valid_raw` are the values of `state_d` and
-    // `insn_fetch_req_valid_o` before any errors are considered.
-    state_raw                = state_q;
+    state_d                  = state_q;
+    // `insn_fetch_req_valid_raw` is the value `insn_fetch_req_valid_o` before any errors are
+    // considered.
     insn_fetch_req_valid_raw = 1'b0;
     insn_fetch_req_addr_o    = '0;
 
@@ -270,7 +281,7 @@ module otbn_controller
     unique case (state_q)
       OtbnStateHalt: begin
         if (start_i) begin
-          state_raw = OtbnStateRun;
+          state_d = OtbnStateRun;
 
           insn_fetch_req_addr_o    = '0;
           insn_fetch_req_valid_raw = 1'b1;
@@ -280,12 +291,12 @@ module otbn_controller
         insn_fetch_req_valid_raw = 1'b1;
 
         if (done_complete) begin
-          state_raw                = OtbnStateHalt;
+          state_d                  = OtbnStateHalt;
           insn_fetch_req_valid_raw = 1'b0;
         end else begin
           // When stalling refetch the same instruction to keep decode inputs constant
           if (stall) begin
-            state_raw             = OtbnStateStall;
+            state_d               = OtbnStateStall;
             insn_fetch_req_addr_o = insn_addr_i;
           end else begin
             if (branch_taken) begin
@@ -303,7 +314,7 @@ module otbn_controller
 
         // When stalling refetch the same instruction to keep decode inputs constant
         if (stall) begin
-          state_raw             = OtbnStateStall;
+          state_d               = OtbnStateStall;
           insn_fetch_req_addr_o = insn_addr_i;
         end else begin
           if (loop_jump) begin
@@ -312,24 +323,32 @@ module otbn_controller
             insn_fetch_req_addr_o = next_insn_addr;
           end
 
-          state_raw = OtbnStateRun;
+          state_d = OtbnStateRun;
         end
       end
       OtbnStateLocked: begin
         insn_fetch_req_valid_raw = 1'b0;
-        state_raw = OtbnStateLocked;
+        state_d                  = OtbnStateLocked;
       end
       default: ;
     endcase
+
+    // On any error immediately halt, either going to OtbnStateLocked or OtbnStateHalt depending on
+    // whether it was a fatal error.
+    if (fatal_err) begin
+      state_d = OtbnStateLocked;
+    end else if (err) begin
+      state_d = OtbnStateHalt;
+    end
+
+    // Regardless of what happens above enforce staying in OtnbStateLocked.
+    if (state_q == OtbnStateLocked) begin
+      state_d = OtbnStateLocked;
+    end
   end
 
   // Anything that moves us or keeps us in the stall state should cause `stall` to be asserted
   `ASSERT(StallIfNextStateStall, insn_valid_i & (state_d == OtbnStateStall) |-> stall)
-
-  // On any error immediately halt and suppress any Imem request.
-  assign state_d = fatal_err ? OtbnStateLocked :
-                   err       ? OtbnStateHalt   :
-                               state_raw;
 
   assign insn_fetch_req_valid_o = err ? 1'b0 : insn_fetch_req_valid_raw;
 
@@ -353,28 +372,68 @@ module otbn_controller
   // or illegal WSR/CSR referenced).
   assign illegal_insn_static = insn_illegal_i | ispr_err;
 
-  // TODO: Implement fatal error on software error mode
-  assign err_bits_o.fatal_software       = 1'b0;
-  assign err_bits_o.lifecycle_escalation = lifecycle_escalation_i;
-  assign err_bits_o.illegal_bus_access   = illegal_bus_access_i;
-  assign err_bits_o.bus_intg_violation   = bus_intg_violation_i;
-  assign err_bits_o.reg_intg_violation   = rf_base_rd_data_err_i | rf_bignum_rd_data_err_i;
-  assign err_bits_o.dmem_intg_violation  = lsu_rdata_err_i;
-  assign err_bits_o.imem_intg_violation  = insn_fetch_err_i;
-  assign err_bits_o.illegal_insn         = illegal_insn_static | rf_indirect_err;
-  assign err_bits_o.bad_data_addr        = dmem_addr_err;
-  assign err_bits_o.loop                 = loop_err;
-  assign err_bits_o.call_stack           = rf_base_call_stack_err_i;
-  assign err_bits_o.bad_insn_addr        = imem_addr_err;
+  assign err_bits.fatal_software       = software_err & software_errs_fatal_i;
+  assign err_bits.lifecycle_escalation = lifecycle_escalation_i;
+  assign err_bits.illegal_bus_access   = illegal_bus_access_i;
+  assign err_bits.bus_intg_violation   = bus_intg_violation_i;
+  assign err_bits.reg_intg_violation   = rf_base_rd_data_err_i | rf_bignum_rd_data_err_i;
+  assign err_bits.dmem_intg_violation  = lsu_rdata_err_i;
+  assign err_bits.imem_intg_violation  = insn_fetch_err_i;
+  assign err_bits.illegal_insn         = illegal_insn_static | rf_indirect_err;
+  assign err_bits.bad_data_addr        = dmem_addr_err;
+  assign err_bits.loop                 = loop_err;
+  assign err_bits.call_stack           = rf_base_call_stack_err_i;
+  assign err_bits.bad_insn_addr        = imem_addr_err;
 
-  assign err = |err_bits_o;
-  assign fatal_err = |{err_bits_o.fatal_software,
-                       err_bits_o.lifecycle_escalation,
-                       err_bits_o.illegal_bus_access,
-                       err_bits_o.bus_intg_violation,
-                       err_bits_o.reg_intg_violation,
-                       err_bits_o.dmem_intg_violation,
-                       err_bits_o.imem_intg_violation};
+  assign software_err = |{err_bits.illegal_insn,
+                          err_bits.bad_data_addr,
+                          err_bits.loop,
+                          err_bits.call_stack,
+                          err_bits.bad_insn_addr};
+
+  assign fatal_err = |{err_bits.fatal_software,
+                       err_bits.lifecycle_escalation,
+                       err_bits.illegal_bus_access,
+                       err_bits.bus_intg_violation,
+                       err_bits.reg_intg_violation,
+                       err_bits.dmem_intg_violation,
+                       err_bits.imem_intg_violation};
+
+
+
+  if (SecWipeEn) begin: gen_sec_wipe
+    err_bits_t err_bits_d, err_bits_q;
+    logic err_bits_en;
+
+    assign err_bits_d = err_bits;
+    assign err_bits_o = err_bits_q;
+    assign err_bits_en = (err & ~secure_wipe_running_i) | (state_q == OtbnStateHalt & start_i);
+
+    always_ff @(posedge clk_i or negedge rst_ni) begin
+      if (!rst_ni) begin
+        err_bits_q.fatal_software <= 1'b0;
+        err_bits_q.lifecycle_escalation <= 1'b0;
+        err_bits_q.illegal_bus_access  <= 1'b0;
+        err_bits_q.bus_intg_violation <= 1'b0;
+        err_bits_q.reg_intg_violation  <= 1'b0;
+        err_bits_q.dmem_intg_violation <= 1'b0;
+        err_bits_q.imem_intg_violation <= 1'b0;
+        err_bits_q.illegal_insn <= 1'b0;
+        err_bits_q.bad_data_addr <= 1'b0;
+        err_bits_q.loop   <= 1'b0;
+        err_bits_q.call_stack <= 1'b0;
+        err_bits_q.bad_insn_addr <= 1'b0;
+      end else if (err_bits_en) begin
+        err_bits_q <= err_bits_d;
+      end
+    end
+
+  end
+  else begin: gen_bypass_sec_wipe
+    assign err_bits_o = err_bits;
+  end
+
+  assign err = software_err | fatal_err;
 
   // Instructions must not execute if there is an error
   assign insn_executing = insn_valid_i & ~err;
@@ -409,13 +468,15 @@ module otbn_controller
     end
   end
 
+  assign loop_reset = state_reset_i | sec_wipe_zero_i;
+
   otbn_loop_controller #(
     .ImemAddrWidth(ImemAddrWidth)
   ) u_otbn_loop_controller (
     .clk_i,
     .rst_ni,
 
-    .state_reset_i,
+    .state_reset_i       (loop_reset),
 
     .insn_valid_i,
     .insn_addr_i,

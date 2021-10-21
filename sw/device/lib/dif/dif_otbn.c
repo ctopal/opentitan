@@ -67,17 +67,6 @@ static bool check_offset_len(uint32_t offset_bytes, size_t len_bytes,
           offset_bytes + len_bytes <= mem_size);
 }
 
-dif_result_t dif_otbn_init(mmio_region_t base_addr, dif_otbn_t *otbn) {
-  if (otbn == NULL) {
-    return kDifBadArg;
-  }
-
-  otbn->base_addr = base_addr;
-  dif_otbn_reset(otbn);
-
-  return kDifOk;
-}
-
 dif_result_t dif_otbn_reset(const dif_otbn_t *otbn) {
   if (otbn == NULL) {
     return kDifBadArg;
@@ -182,6 +171,29 @@ dif_result_t dif_otbn_dmem_read(const dif_otbn_t *otbn, uint32_t offset_bytes,
 
   mmio_region_memcpy_from_mmio32(
       otbn->base_addr, OTBN_DMEM_REG_OFFSET + offset_bytes, dest, len_bytes);
+
+  return kDifOk;
+}
+
+dif_result_t dif_otbn_set_ctrl_software_errs_fatal(const dif_otbn_t *otbn,
+                                                   bool enable) {
+  if (otbn == NULL) {
+    return kDifBadArg;
+  }
+
+  // Only one bit in the CTRL register so no need to read current value.
+  uint32_t new_ctrl;
+
+  if (enable) {
+    new_ctrl = 1;
+  } else {
+    new_ctrl = 0;
+  }
+
+  mmio_region_write32(otbn->base_addr, OTBN_CTRL_REG_OFFSET, new_ctrl);
+  if (mmio_region_read32(otbn->base_addr, OTBN_CTRL_REG_OFFSET) != new_ctrl) {
+    return kDifUnavailable;
+  }
 
   return kDifOk;
 }

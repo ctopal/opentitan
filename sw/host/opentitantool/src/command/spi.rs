@@ -12,10 +12,11 @@ use std::path::PathBuf;
 use std::time::Instant;
 use structopt::StructOpt;
 
+use opentitanlib::app::TransportWrapper;
 use opentitanlib::app::command::CommandDispatch;
-use opentitanlib::io::spi::Transfer;
+use opentitanlib::io::spi::{SpiParams, Transfer};
 use opentitanlib::spiflash::SpiFlash;
-use opentitanlib::transport::{Capability, Transport};
+use opentitanlib::transport::Capability;
 
 /// Read and parse an SFDP table.
 #[derive(Debug, StructOpt)]
@@ -73,11 +74,11 @@ impl CommandDispatch for SpiSfdp {
     fn run(
         &self,
         context: &dyn Any,
-        transport: &mut dyn Transport,
+        transport: &TransportWrapper,
     ) -> Result<Option<Box<dyn Serialize>>> {
         transport.capabilities().request(Capability::SPI).ok()?;
         let context = context.downcast_ref::<SpiCommand>().unwrap();
-        let spi = transport.spi(context.bus)?;
+        let spi = context.params.create(transport)?;
 
         if let Some(length) = self.raw {
             let mut buffer = vec![0u8; length];
@@ -115,11 +116,11 @@ impl CommandDispatch for SpiReadId {
     fn run(
         &self,
         context: &dyn Any,
-        transport: &mut dyn Transport,
+        transport: &TransportWrapper,
     ) -> Result<Option<Box<dyn Serialize>>> {
         transport.capabilities().request(Capability::SPI).ok()?;
         let context = context.downcast_ref::<SpiCommand>().unwrap();
-        let spi = transport.spi(context.bus)?;
+        let spi = context.params.create(transport)?;
         let jedec_id = SpiFlash::read_jedec_id(&*spi, self.length)?;
         Ok(Some(Box::new(SpiReadIdResponse { jedec_id })))
     }
@@ -164,11 +165,11 @@ impl CommandDispatch for SpiRead {
     fn run(
         &self,
         context: &dyn Any,
-        transport: &mut dyn Transport,
+        transport: &TransportWrapper,
     ) -> Result<Option<Box<dyn Serialize>>> {
         transport.capabilities().request(Capability::SPI).ok()?;
         let context = context.downcast_ref::<SpiCommand>().unwrap();
-        let spi = transport.spi(context.bus)?;
+        let spi = context.params.create(transport)?;
         let mut flash = SpiFlash::from_spi(&*spi)?;
         flash.set_address_mode_auto(&*spi)?;
 
@@ -214,11 +215,11 @@ impl CommandDispatch for SpiErase {
     fn run(
         &self,
         context: &dyn Any,
-        transport: &mut dyn Transport,
+        transport: &TransportWrapper,
     ) -> Result<Option<Box<dyn Serialize>>> {
         transport.capabilities().request(Capability::SPI).ok()?;
         let context = context.downcast_ref::<SpiCommand>().unwrap();
-        let spi = transport.spi(context.bus)?;
+        let spi = context.params.create(transport)?;
         let mut flash = SpiFlash::from_spi(&*spi)?;
         flash.set_address_mode_auto(&*spi)?;
 
@@ -256,11 +257,11 @@ impl CommandDispatch for SpiProgram {
     fn run(
         &self,
         context: &dyn Any,
-        transport: &mut dyn Transport,
+        transport: &TransportWrapper,
     ) -> Result<Option<Box<dyn Serialize>>> {
         transport.capabilities().request(Capability::SPI).ok()?;
         let context = context.downcast_ref::<SpiCommand>().unwrap();
-        let spi = transport.spi(context.bus)?;
+        let spi = context.params.create(transport)?;
         let mut flash = SpiFlash::from_spi(&*spi)?;
         flash.set_address_mode_auto(&*spi)?;
 
@@ -292,8 +293,9 @@ pub enum InternalSpiCommand {
 
 #[derive(Debug, StructOpt)]
 pub struct SpiCommand {
-    #[structopt(short, long, default_value = "0", help = "SPI bus")]
-    pub bus: u32,
+    #[structopt(flatten)]
+    params: SpiParams,
+
     #[structopt(subcommand)]
     command: InternalSpiCommand,
 }
@@ -302,7 +304,7 @@ impl CommandDispatch for SpiCommand {
     fn run(
         &self,
         _context: &dyn Any,
-        transport: &mut dyn Transport,
+        transport: &TransportWrapper,
     ) -> Result<Option<Box<dyn Serialize>>> {
         // None of the SPI commands care about the prior context, but they do
         // care about the `bus` parameter in the current node.

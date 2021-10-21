@@ -153,6 +153,7 @@ sw_lib_dif_rv_plic = declare_dependency(
     dependencies: [
       sw_lib_mmio,
       sw_lib_bitfield,
+      sw_lib_dif_autogen_rv_plic,
     ],
   )
 )
@@ -160,9 +161,11 @@ sw_lib_dif_rv_plic = declare_dependency(
 test('dif_rv_plic_unittest', executable(
     'dif_rv_plic_unittest',
     sources: [
-      hw_top_earlgrey_rv_plic_reg_h,
-      meson.source_root() / 'sw/device/lib/dif/dif_rv_plic.c',
       'dif_rv_plic_unittest.cc',
+      'autogen/dif_rv_plic_autogen_unittest.cc',
+      meson.source_root() / 'sw/device/lib/dif/dif_rv_plic.c',
+      meson.source_root() / 'sw/device/lib/dif/autogen/dif_rv_plic_autogen.c',
+      hw_top_earlgrey_rv_plic_reg_h,
     ],
     dependencies: [
       sw_vendor_gtest,
@@ -218,16 +221,21 @@ sw_lib_dif_spi_device = declare_dependency(
       hw_ip_spi_device_reg_h,
       'dif_spi_device.c',
     ],
-    dependencies: [sw_lib_mmio],
+    dependencies: [
+      sw_lib_mmio,
+      sw_lib_dif_autogen_spi_device,
+    ],
   )
 )
 
 test('dif_spi_device_unittest', executable(
     'dif_spi_device_unittest',
     sources: [
-      hw_ip_spi_device_reg_h,
-      meson.source_root() / 'sw/device/lib/dif/dif_spi_device.c',
       'dif_spi_device_unittest.cc',
+      'autogen/dif_spi_device_autogen_unittest.cc',
+      meson.source_root() / 'sw/device/lib/dif/dif_spi_device.c',
+      meson.source_root() / 'sw/device/lib/dif/autogen/dif_spi_device_autogen.c',
+      hw_ip_spi_device_reg_h,
     ],
     dependencies: [
       sw_vendor_gtest,
@@ -249,7 +257,8 @@ sw_lib_dif_rv_timer = declare_dependency(
       'dif_rv_timer.c',
     ],
     dependencies: [
-      sw_lib_mmio
+      sw_lib_mmio,
+      sw_lib_dif_autogen_rv_timer,
     ],
   )
 )
@@ -257,9 +266,11 @@ sw_lib_dif_rv_timer = declare_dependency(
 test('dif_rv_timer_unittest', executable(
     'dif_rv_timer_unittest',
     sources: [
-      hw_ip_rv_timer_reg_h,
-      meson.source_root() / 'sw/device/lib/dif/dif_rv_timer.c',
       'dif_rv_timer_unittest.cc',
+      'autogen/dif_rv_timer_autogen_unittest.cc',
+      meson.source_root() / 'sw/device/lib/dif/dif_rv_timer.c',
+      meson.source_root() / 'sw/device/lib/dif/autogen/dif_rv_timer_autogen.c',
+      hw_ip_rv_timer_reg_h,
     ],
     dependencies: [
       sw_vendor_gtest,
@@ -318,8 +329,28 @@ sw_lib_dif_usbdev = declare_dependency(
     dependencies: [
       sw_lib_mmio,
       sw_lib_bitfield,
+      sw_lib_dif_autogen_usbdev,
     ],
   )
+)
+
+test('dif_usbdev_unittest', executable(
+    'dif_usbdev_unittest',
+    sources: [
+      'autogen/dif_usbdev_autogen_unittest.cc',
+      meson.source_root() / 'sw/device/lib/dif/dif_usbdev.c',
+      meson.source_root() / 'sw/device/lib/dif/autogen/dif_usbdev_autogen.c',
+      hw_ip_usbdev_reg_h,
+    ],
+    dependencies: [
+      sw_vendor_gtest,
+      sw_lib_base_testing_mock_mmio,
+    ],
+    native: true,
+    c_args: ['-DMOCK_MMIO'],
+    cpp_args: ['-DMOCK_MMIO'],
+  ),
+  suite: 'dif',
 )
 
 # HMAC device DIF library
@@ -370,6 +401,7 @@ sw_lib_dif_kmac = declare_dependency(
     dependencies: [
       sw_lib_bitfield,
       sw_lib_mmio,
+      sw_lib_dif_autogen_kmac,
     ],
   )
 )
@@ -378,7 +410,9 @@ test('dif_kmac_unittest', executable(
     'dif_kmac_unittest',
     sources: [
       'dif_kmac_unittest.cc',
+      'autogen/dif_kmac_autogen_unittest.cc',
       meson.source_root() / 'sw/device/lib/dif/dif_kmac.c',
+      meson.source_root() / 'sw/device/lib/dif/autogen/dif_kmac_autogen.c',
       hw_ip_kmac_reg_h,
     ],
     dependencies: [
@@ -654,6 +688,7 @@ sw_lib_dif_aon_timer = declare_dependency(
     dependencies: [
       sw_lib_mmio,
       sw_lib_bitfield,
+      sw_lib_dif_autogen_aon_timer,
     ],
   )
 )
@@ -661,9 +696,11 @@ sw_lib_dif_aon_timer = declare_dependency(
 test('dif_aon_timer_unittest', executable(
     'dif_aon_timer_unittest',
     sources: [
-      hw_ip_aon_timer_reg_h,
-      meson.source_root() / 'sw/device/lib/dif/dif_aon_timer.c',
       'dif_aon_timer_unittest.cc',
+      'autogen/dif_aon_timer_autogen_unittest.cc',
+      meson.source_root() / 'sw/device/lib/dif/dif_aon_timer.c',
+      meson.source_root() / 'sw/device/lib/dif/autogen/dif_aon_timer_autogen.c',
+      hw_ip_aon_timer_reg_h,
     ],
     dependencies: [
       sw_vendor_gtest,

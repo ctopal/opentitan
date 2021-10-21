@@ -4,7 +4,7 @@
 
 // This file is auto-generated.
 
-#include "sw/device/lib/dif/dif_gpio.h"
+#include "sw/device/lib/dif/autogen/dif_gpio_autogen.h"
 
 #include "gtest/gtest.h"
 #include "sw/device/lib/base/mmio.h"
@@ -16,6 +16,7 @@ namespace dif_gpio_autogen_unittest {
 namespace {
 using ::mock_mmio::MmioTest;
 using ::mock_mmio::MockDevice;
+using ::testing::Eq;
 using ::testing::Test;
 
 class GpioTest : public Test, public MmioTest {
@@ -23,7 +24,15 @@ class GpioTest : public Test, public MmioTest {
   dif_gpio_t gpio_ = {.base_addr = dev().region()};
 };
 
-using ::testing::Eq;
+class InitTest : public GpioTest {};
+
+TEST_F(InitTest, NullArgs) {
+  EXPECT_EQ(dif_gpio_init({.base_addr = dev().region()}, nullptr), kDifBadArg);
+}
+
+TEST_F(InitTest, Success) {
+  EXPECT_EQ(dif_gpio_init({.base_addr = dev().region()}, &gpio_), kDifOk);
+}
 
 class IrqGetStateTest : public GpioTest {};
 
@@ -116,6 +125,27 @@ TEST_F(IrqAcknowledgeTest, Success) {
   EXPECT_EQ(dif_gpio_irq_acknowledge(&gpio_, kDifGpioIrqGpio31), kDifOk);
 }
 
+class IrqForceTest : public GpioTest {};
+
+TEST_F(IrqForceTest, NullArgs) {
+  EXPECT_EQ(dif_gpio_irq_force(nullptr, kDifGpioIrqGpio0), kDifBadArg);
+}
+
+TEST_F(IrqForceTest, BadIrq) {
+  EXPECT_EQ(dif_gpio_irq_force(nullptr, static_cast<dif_gpio_irq_t>(32)),
+            kDifBadArg);
+}
+
+TEST_F(IrqForceTest, Success) {
+  // Force first IRQ.
+  EXPECT_WRITE32(GPIO_INTR_TEST_REG_OFFSET, {{0, true}});
+  EXPECT_EQ(dif_gpio_irq_force(&gpio_, kDifGpioIrqGpio0), kDifOk);
+
+  // Force last IRQ.
+  EXPECT_WRITE32(GPIO_INTR_TEST_REG_OFFSET, {{31, true}});
+  EXPECT_EQ(dif_gpio_irq_force(&gpio_, kDifGpioIrqGpio31), kDifOk);
+}
+
 class IrqGetEnabledTest : public GpioTest {};
 
 TEST_F(IrqGetEnabledTest, NullArgs) {
@@ -188,27 +218,6 @@ TEST_F(IrqSetEnabledTest, Success) {
   EXPECT_MASK32(GPIO_INTR_ENABLE_REG_OFFSET, {{31, 0x1, false}});
   EXPECT_EQ(dif_gpio_irq_set_enabled(&gpio_, kDifGpioIrqGpio31, irq_state),
             kDifOk);
-}
-
-class IrqForceTest : public GpioTest {};
-
-TEST_F(IrqForceTest, NullArgs) {
-  EXPECT_EQ(dif_gpio_irq_force(nullptr, kDifGpioIrqGpio0), kDifBadArg);
-}
-
-TEST_F(IrqForceTest, BadIrq) {
-  EXPECT_EQ(dif_gpio_irq_force(nullptr, static_cast<dif_gpio_irq_t>(32)),
-            kDifBadArg);
-}
-
-TEST_F(IrqForceTest, Success) {
-  // Force first IRQ.
-  EXPECT_WRITE32(GPIO_INTR_TEST_REG_OFFSET, {{0, true}});
-  EXPECT_EQ(dif_gpio_irq_force(&gpio_, kDifGpioIrqGpio0), kDifOk);
-
-  // Force last IRQ.
-  EXPECT_WRITE32(GPIO_INTR_TEST_REG_OFFSET, {{31, true}});
-  EXPECT_EQ(dif_gpio_irq_force(&gpio_, kDifGpioIrqGpio31), kDifOk);
 }
 
 class IrqDisableAllTest : public GpioTest {};

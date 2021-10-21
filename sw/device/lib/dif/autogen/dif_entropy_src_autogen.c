@@ -4,29 +4,42 @@
 
 // This file is auto-generated.
 
-#include "sw/device/lib/dif/dif_entropy_src.h"
+#include "sw/device/lib/dif/autogen/dif_entropy_src_autogen.h"
 
 #include "entropy_src_regs.h"  // Generated.
 
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_entropy_src_init(mmio_region_t base_addr,
+                                  dif_entropy_src_t *entropy_src) {
+  if (entropy_src == NULL) {
+    return kDifBadArg;
+  }
+
+  entropy_src->base_addr = base_addr;
+
+  return kDifOk;
+}
+
 /**
- * Get the corresponding interrupt register bit offset. INTR_STATE,
- * INTR_ENABLE and INTR_TEST registers have the same bit offsets, so this
- * routine can be reused.
+ * Get the corresponding interrupt register bit offset of the IRQ. If the IP's
+ * HJSON does NOT have a field "no_auto_intr_regs = true", then the
+ * "<ip>_INTR_COMMON_<irq>_BIT" macro can used. Otherwise, special cases will
+ * exist, as templated below.
  */
 static bool entropy_src_get_irq_bit_index(dif_entropy_src_irq_t irq,
                                           bitfield_bit32_index_t *index_out) {
   switch (irq) {
     case kDifEntropySrcIrqEsEntropyValid:
-      *index_out = ENTROPY_SRC_INTR_STATE_ES_ENTROPY_VALID_BIT;
+      *index_out = ENTROPY_SRC_INTR_COMMON_ES_ENTROPY_VALID_BIT;
       break;
     case kDifEntropySrcIrqEsHealthTestFailed:
-      *index_out = ENTROPY_SRC_INTR_STATE_ES_HEALTH_TEST_FAILED_BIT;
+      *index_out = ENTROPY_SRC_INTR_COMMON_ES_HEALTH_TEST_FAILED_BIT;
       break;
     case kDifEntropySrcIrqEsObserveFifoReady:
-      *index_out = ENTROPY_SRC_INTR_STATE_ES_OBSERVE_FIFO_READY_BIT;
+      *index_out = ENTROPY_SRC_INTR_COMMON_ES_OBSERVE_FIFO_READY_BIT;
       break;
     case kDifEntropySrcIrqEsFatalErr:
-      *index_out = ENTROPY_SRC_INTR_STATE_ES_FATAL_ERR_BIT;
+      *index_out = ENTROPY_SRC_INTR_COMMON_ES_FATAL_ERR_BIT;
       break;
     default:
       return false;
@@ -91,6 +104,25 @@ dif_result_t dif_entropy_src_irq_acknowledge(
 }
 
 OT_WARN_UNUSED_RESULT
+dif_result_t dif_entropy_src_irq_force(const dif_entropy_src_t *entropy_src,
+                                       dif_entropy_src_irq_t irq) {
+  if (entropy_src == NULL) {
+    return kDifBadArg;
+  }
+
+  bitfield_bit32_index_t index;
+  if (!entropy_src_get_irq_bit_index(irq, &index)) {
+    return kDifBadArg;
+  }
+
+  uint32_t intr_test_reg = bitfield_bit32_write(0, index, true);
+  mmio_region_write32(entropy_src->base_addr, ENTROPY_SRC_INTR_TEST_REG_OFFSET,
+                      intr_test_reg);
+
+  return kDifOk;
+}
+
+OT_WARN_UNUSED_RESULT
 dif_result_t dif_entropy_src_irq_get_enabled(
     const dif_entropy_src_t *entropy_src, dif_entropy_src_irq_t irq,
     dif_toggle_t *state) {
@@ -132,25 +164,6 @@ dif_result_t dif_entropy_src_irq_set_enabled(
   intr_enable_reg = bitfield_bit32_write(intr_enable_reg, index, enable_bit);
   mmio_region_write32(entropy_src->base_addr,
                       ENTROPY_SRC_INTR_ENABLE_REG_OFFSET, intr_enable_reg);
-
-  return kDifOk;
-}
-
-OT_WARN_UNUSED_RESULT
-dif_result_t dif_entropy_src_irq_force(const dif_entropy_src_t *entropy_src,
-                                       dif_entropy_src_irq_t irq) {
-  if (entropy_src == NULL) {
-    return kDifBadArg;
-  }
-
-  bitfield_bit32_index_t index;
-  if (!entropy_src_get_irq_bit_index(irq, &index)) {
-    return kDifBadArg;
-  }
-
-  uint32_t intr_test_reg = bitfield_bit32_write(0, index, true);
-  mmio_region_write32(entropy_src->base_addr, ENTROPY_SRC_INTR_TEST_REG_OFFSET,
-                      intr_test_reg);
 
   return kDifOk;
 }

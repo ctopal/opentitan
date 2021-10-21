@@ -4,29 +4,41 @@
 
 // This file is auto-generated.
 
-#include "sw/device/lib/dif/dif_csrng.h"
+#include "sw/device/lib/dif/autogen/dif_csrng_autogen.h"
 
 #include "csrng_regs.h"  // Generated.
 
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_csrng_init(mmio_region_t base_addr, dif_csrng_t *csrng) {
+  if (csrng == NULL) {
+    return kDifBadArg;
+  }
+
+  csrng->base_addr = base_addr;
+
+  return kDifOk;
+}
+
 /**
- * Get the corresponding interrupt register bit offset. INTR_STATE,
- * INTR_ENABLE and INTR_TEST registers have the same bit offsets, so this
- * routine can be reused.
+ * Get the corresponding interrupt register bit offset of the IRQ. If the IP's
+ * HJSON does NOT have a field "no_auto_intr_regs = true", then the
+ * "<ip>_INTR_COMMON_<irq>_BIT" macro can used. Otherwise, special cases will
+ * exist, as templated below.
  */
 static bool csrng_get_irq_bit_index(dif_csrng_irq_t irq,
                                     bitfield_bit32_index_t *index_out) {
   switch (irq) {
     case kDifCsrngIrqCsCmdReqDone:
-      *index_out = CSRNG_INTR_STATE_CS_CMD_REQ_DONE_BIT;
+      *index_out = CSRNG_INTR_COMMON_CS_CMD_REQ_DONE_BIT;
       break;
     case kDifCsrngIrqCsEntropyReq:
-      *index_out = CSRNG_INTR_STATE_CS_ENTROPY_REQ_BIT;
+      *index_out = CSRNG_INTR_COMMON_CS_ENTROPY_REQ_BIT;
       break;
     case kDifCsrngIrqCsHwInstExc:
-      *index_out = CSRNG_INTR_STATE_CS_HW_INST_EXC_BIT;
+      *index_out = CSRNG_INTR_COMMON_CS_HW_INST_EXC_BIT;
       break;
     case kDifCsrngIrqCsFatalErr:
-      *index_out = CSRNG_INTR_STATE_CS_FATAL_ERR_BIT;
+      *index_out = CSRNG_INTR_COMMON_CS_FATAL_ERR_BIT;
       break;
     default:
       return false;
@@ -88,6 +100,25 @@ dif_result_t dif_csrng_irq_acknowledge(const dif_csrng_t *csrng,
 }
 
 OT_WARN_UNUSED_RESULT
+dif_result_t dif_csrng_irq_force(const dif_csrng_t *csrng,
+                                 dif_csrng_irq_t irq) {
+  if (csrng == NULL) {
+    return kDifBadArg;
+  }
+
+  bitfield_bit32_index_t index;
+  if (!csrng_get_irq_bit_index(irq, &index)) {
+    return kDifBadArg;
+  }
+
+  uint32_t intr_test_reg = bitfield_bit32_write(0, index, true);
+  mmio_region_write32(csrng->base_addr, CSRNG_INTR_TEST_REG_OFFSET,
+                      intr_test_reg);
+
+  return kDifOk;
+}
+
+OT_WARN_UNUSED_RESULT
 dif_result_t dif_csrng_irq_get_enabled(const dif_csrng_t *csrng,
                                        dif_csrng_irq_t irq,
                                        dif_toggle_t *state) {
@@ -129,25 +160,6 @@ dif_result_t dif_csrng_irq_set_enabled(const dif_csrng_t *csrng,
   intr_enable_reg = bitfield_bit32_write(intr_enable_reg, index, enable_bit);
   mmio_region_write32(csrng->base_addr, CSRNG_INTR_ENABLE_REG_OFFSET,
                       intr_enable_reg);
-
-  return kDifOk;
-}
-
-OT_WARN_UNUSED_RESULT
-dif_result_t dif_csrng_irq_force(const dif_csrng_t *csrng,
-                                 dif_csrng_irq_t irq) {
-  if (csrng == NULL) {
-    return kDifBadArg;
-  }
-
-  bitfield_bit32_index_t index;
-  if (!csrng_get_irq_bit_index(irq, &index)) {
-    return kDifBadArg;
-  }
-
-  uint32_t intr_test_reg = bitfield_bit32_write(0, index, true);
-  mmio_region_write32(csrng->base_addr, CSRNG_INTR_TEST_REG_OFFSET,
-                      intr_test_reg);
 
   return kDifOk;
 }

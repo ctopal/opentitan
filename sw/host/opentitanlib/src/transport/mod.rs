@@ -7,7 +7,7 @@ use bitflags::bitflags;
 use std::rc::Rc;
 use thiserror::Error;
 
-use crate::io::gpio::Gpio;
+use crate::io::gpio::GpioPin;
 use crate::io::spi::Target;
 use crate::io::uart::Uart;
 
@@ -22,6 +22,7 @@ bitflags! {
         const UART = 0x00000001;
         const SPI = 0x00000002;
         const GPIO = 0x00000004;
+        const FPGA_PROGRAM = 0x00000008;
     }
 }
 
@@ -65,7 +66,7 @@ impl Capabilities {
 #[derive(Error, Debug)]
 pub enum TransportError {
     #[error("This transport does not support {0} instance {1}")]
-    InvalidInstance(&'static str, u32),
+    InvalidInstance(&'static str, String),
 }
 
 /// A transport object is a factory for the low-level interfaces provided
@@ -76,15 +77,19 @@ pub trait Transport {
     fn capabilities(&self) -> Capabilities;
 
     /// Returns a SPI [`Target`] implementation.
-    fn spi(&self, _instance: u32) -> Result<Rc<dyn Target>> {
+    fn spi(&self, _instance: &str) -> Result<Rc<dyn Target>> {
         unimplemented!();
     }
     /// Returns a [`Uart`] implementation.
-    fn uart(&self, _instance: u32) -> Result<Rc<dyn Uart>> {
+    fn uart(&self, _instance: &str) -> Result<Rc<dyn Uart>> {
         unimplemented!();
     }
-    /// Returns a [`Gpio`] implementation.
-    fn gpio(&self) -> Result<Rc<dyn Gpio>> {
+    /// Returns a [`GpioPin`] implementation.
+    fn gpio_pin(&self, _instance: &str) -> Result<Rc<dyn GpioPin>> {
+        unimplemented!();
+    }
+    /// Programs a bitstream into an FPGA.
+    fn fpga_program(&self, _bitstream: &[u8]) -> Result<()> {
         unimplemented!();
     }
 }

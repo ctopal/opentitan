@@ -45,6 +45,18 @@
       default: "7",
       local: "true"
     },
+    { name: "NumSwGateableClocks",
+      desc: "Number of SW gateable clocks",
+      type: "int",
+      default: "4",
+      local: "true"
+    },
+    { name: "NumHintableClocks",
+      desc: "Number of hintable clocks",
+      type: "int",
+      default: "5",
+      local: "true"
+    },
   ],
 
   inter_signal_list: [
@@ -192,7 +204,7 @@
     { name: "CLK_ENABLES",
       desc: '''
         Clock enable for software gateable clocks.
-        These clocks are direclty controlled by software.
+        These clocks are directly controlled by software.
       ''',
       swaccess: "rw",
       hwaccess: "hro",
@@ -396,27 +408,26 @@
           bits: "0",
           name: "EN",
           desc: "Enable measurement for io",
-          resval: "0"
+          resval: "0",
+          // Measurements can cause recoverable errors depending on the
+          // thresholds which the CSR tests will not predict correctly.
+          // To provide better CSR coverage we allow writing the threshold
+          // fields, but not enabling the counters.
+          tags: ["excl:CsrNonInitTests:CsrExclWrite"]
         },
 
         {
           bits: "13:4",
           name: "MAX_THRESH",
           desc: "Max threshold for io measurement",
-          resval: "490",
-          // random updates to this field if measurements are turned on can
-          // cause the results to fail
-          tags: ["excl:CsrNonInitTests:CsrExclWrite"]
+          resval: "490"
         },
 
         {
           bits: "23:14",
           name: "MIN_THRESH",
           desc: "Min threshold for io measurement",
-          resval: "470",
-          // random updates to this field if measurements are turned on can
-          // cause the results to fail
-          tags: ["excl:CsrNonInitTests:CsrExclWrite"]
+          resval: "470"
         },
       ]
     },
@@ -436,27 +447,26 @@
           bits: "0",
           name: "EN",
           desc: "Enable measurement for io_div2",
-          resval: "0"
+          resval: "0",
+          // Measurements can cause recoverable errors depending on the
+          // thresholds which the CSR tests will not predict correctly.
+          // To provide better CSR coverage we allow writing the threshold
+          // fields, but not enabling the counters.
+          tags: ["excl:CsrNonInitTests:CsrExclWrite"]
         },
 
         {
           bits: "12:4",
           name: "MAX_THRESH",
           desc: "Max threshold for io_div2 measurement",
-          resval: "250",
-          // random updates to this field if measurements are turned on can
-          // cause the results to fail
-          tags: ["excl:CsrNonInitTests:CsrExclWrite"]
+          resval: "250"
         },
 
         {
           bits: "21:13",
           name: "MIN_THRESH",
           desc: "Min threshold for io_div2 measurement",
-          resval: "230",
-          // random updates to this field if measurements are turned on can
-          // cause the results to fail
-          tags: ["excl:CsrNonInitTests:CsrExclWrite"]
+          resval: "230"
         },
       ]
     },
@@ -476,27 +486,26 @@
           bits: "0",
           name: "EN",
           desc: "Enable measurement for io_div4",
-          resval: "0"
+          resval: "0",
+          // Measurements can cause recoverable errors depending on the
+          // thresholds which the CSR tests will not predict correctly.
+          // To provide better CSR coverage we allow writing the threshold
+          // fields, but not enabling the counters.
+          tags: ["excl:CsrNonInitTests:CsrExclWrite"]
         },
 
         {
           bits: "11:4",
           name: "MAX_THRESH",
           desc: "Max threshold for io_div4 measurement",
-          resval: "130",
-          // random updates to this field if measurements are turned on can
-          // cause the results to fail
-          tags: ["excl:CsrNonInitTests:CsrExclWrite"]
+          resval: "130"
         },
 
         {
           bits: "19:12",
           name: "MIN_THRESH",
           desc: "Min threshold for io_div4 measurement",
-          resval: "110",
-          // random updates to this field if measurements are turned on can
-          // cause the results to fail
-          tags: ["excl:CsrNonInitTests:CsrExclWrite"]
+          resval: "110"
         },
       ]
     },
@@ -516,27 +525,26 @@
           bits: "0",
           name: "EN",
           desc: "Enable measurement for main",
-          resval: "0"
+          resval: "0",
+          // Measurements can cause recoverable errors depending on the
+          // thresholds which the CSR tests will not predict correctly.
+          // To provide better CSR coverage we allow writing the threshold
+          // fields, but not enabling the counters.
+          tags: ["excl:CsrNonInitTests:CsrExclWrite"]
         },
 
         {
           bits: "13:4",
           name: "MAX_THRESH",
           desc: "Max threshold for main measurement",
-          resval: "510",
-          // random updates to this field if measurements are turned on can
-          // cause the results to fail
-          tags: ["excl:CsrNonInitTests:CsrExclWrite"]
+          resval: "510"
         },
 
         {
           bits: "23:14",
           name: "MIN_THRESH",
           desc: "Min threshold for main measurement",
-          resval: "490",
-          // random updates to this field if measurements are turned on can
-          // cause the results to fail
-          tags: ["excl:CsrNonInitTests:CsrExclWrite"]
+          resval: "490"
         },
       ]
     },
@@ -556,27 +564,26 @@
           bits: "0",
           name: "EN",
           desc: "Enable measurement for usb",
-          resval: "0"
+          resval: "0",
+          // Measurements can cause recoverable errors depending on the
+          // thresholds which the CSR tests will not predict correctly.
+          // To provide better CSR coverage we allow writing the threshold
+          // fields, but not enabling the counters.
+          tags: ["excl:CsrNonInitTests:CsrExclWrite"]
         },
 
         {
           bits: "12:4",
           name: "MAX_THRESH",
           desc: "Max threshold for usb measurement",
-          resval: "250",
-          // random updates to this field if measurements are turned on can
-          // cause the results to fail
-          tags: ["excl:CsrNonInitTests:CsrExclWrite"]
+          resval: "250"
         },
 
         {
           bits: "21:13",
           name: "MIN_THRESH",
           desc: "Min threshold for usb measurement",
-          resval: "230",
-          // random updates to this field if measurements are turned on can
-          // cause the results to fail
-          tags: ["excl:CsrNonInitTests:CsrExclWrite"]
+          resval: "230"
         },
       ]
     },
@@ -584,7 +591,7 @@
     { name: "RECOV_ERR_CODE",
       desc: "Recoverable Error code ",
       swaccess: "rw1c",
-      hwaccess: "hrw",
+      hwaccess: "hwo",
       fields: [
         {
           bits: "0",

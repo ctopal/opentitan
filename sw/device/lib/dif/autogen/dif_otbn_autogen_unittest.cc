@@ -4,7 +4,7 @@
 
 // This file is auto-generated.
 
-#include "sw/device/lib/dif/dif_otbn.h"
+#include "sw/device/lib/dif/autogen/dif_otbn_autogen.h"
 
 #include "gtest/gtest.h"
 #include "sw/device/lib/base/mmio.h"
@@ -16,6 +16,7 @@ namespace dif_otbn_autogen_unittest {
 namespace {
 using ::mock_mmio::MmioTest;
 using ::mock_mmio::MockDevice;
+using ::testing::Eq;
 using ::testing::Test;
 
 class OtbnTest : public Test, public MmioTest {
@@ -23,7 +24,15 @@ class OtbnTest : public Test, public MmioTest {
   dif_otbn_t otbn_ = {.base_addr = dev().region()};
 };
 
-using ::testing::Eq;
+class InitTest : public OtbnTest {};
+
+TEST_F(InitTest, NullArgs) {
+  EXPECT_EQ(dif_otbn_init({.base_addr = dev().region()}, nullptr), kDifBadArg);
+}
+
+TEST_F(InitTest, Success) {
+  EXPECT_EQ(dif_otbn_init({.base_addr = dev().region()}, &otbn_), kDifOk);
+}
 
 class IrqGetStateTest : public OtbnTest {};
 
@@ -106,6 +115,23 @@ TEST_F(IrqAcknowledgeTest, Success) {
   EXPECT_EQ(dif_otbn_irq_acknowledge(&otbn_, kDifOtbnIrqDone), kDifOk);
 }
 
+class IrqForceTest : public OtbnTest {};
+
+TEST_F(IrqForceTest, NullArgs) {
+  EXPECT_EQ(dif_otbn_irq_force(nullptr, kDifOtbnIrqDone), kDifBadArg);
+}
+
+TEST_F(IrqForceTest, BadIrq) {
+  EXPECT_EQ(dif_otbn_irq_force(nullptr, static_cast<dif_otbn_irq_t>(32)),
+            kDifBadArg);
+}
+
+TEST_F(IrqForceTest, Success) {
+  // Force first IRQ.
+  EXPECT_WRITE32(OTBN_INTR_TEST_REG_OFFSET, {{OTBN_INTR_TEST_DONE_BIT, true}});
+  EXPECT_EQ(dif_otbn_irq_force(&otbn_, kDifOtbnIrqDone), kDifOk);
+}
+
 class IrqGetEnabledTest : public OtbnTest {};
 
 TEST_F(IrqGetEnabledTest, NullArgs) {
@@ -167,23 +193,6 @@ TEST_F(IrqSetEnabledTest, Success) {
                 {{OTBN_INTR_ENABLE_DONE_BIT, 0x1, true}});
   EXPECT_EQ(dif_otbn_irq_set_enabled(&otbn_, kDifOtbnIrqDone, irq_state),
             kDifOk);
-}
-
-class IrqForceTest : public OtbnTest {};
-
-TEST_F(IrqForceTest, NullArgs) {
-  EXPECT_EQ(dif_otbn_irq_force(nullptr, kDifOtbnIrqDone), kDifBadArg);
-}
-
-TEST_F(IrqForceTest, BadIrq) {
-  EXPECT_EQ(dif_otbn_irq_force(nullptr, static_cast<dif_otbn_irq_t>(32)),
-            kDifBadArg);
-}
-
-TEST_F(IrqForceTest, Success) {
-  // Force first IRQ.
-  EXPECT_WRITE32(OTBN_INTR_TEST_REG_OFFSET, {{OTBN_INTR_TEST_DONE_BIT, true}});
-  EXPECT_EQ(dif_otbn_irq_force(&otbn_, kDifOtbnIrqDone), kDifOk);
 }
 
 class IrqDisableAllTest : public OtbnTest {};

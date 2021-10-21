@@ -60,7 +60,7 @@
   ]
   interrupt_list: [
     { name: "done"
-      desc: "OTBN has completed the operation"
+      desc: "OTBN has completed the operation."
     }
   ]
   alert_list: [
@@ -132,8 +132,26 @@
 
   regwidth: "32"
   registers: [
+    // The magic values for EXECUTE, SEC_WIPE_DMEM and SEC_WIPE_IMEM in the CMD
+    // register below were generated with the sparse-fsm-encode.py script:
+    //
+    //   util/design/sparse-fsm-encode.py -d 4 -m 3 -n 8 --avoid-zero -s 1
+    //
+    // and have a hamming distance of at least 4 from one another and the zero
+    // word.
     { name: "CMD"
-      desc: "command register",
+      desc: '''
+        Command Register
+
+        A command initiates an OTBN operation. While performing the operation,
+        OTBN is busy; the !!STATUS register reflects that.
+
+        All operations signal their completion by raising the done
+        interrupt; alternatively, software may poll the !!STATUS register.
+
+        Writes are ignored if OTBN is not idle.
+        Unrecognized commands are ignored.
+      ''',
       swaccess: "wo",
       hwaccess: "hro",
       hwext: "true",
@@ -143,19 +161,7 @@
           name: "cmd"
           resval: 0,
           desc: '''
-            Initiates an OTBN operation.
-
-            A command starts an OTBN operation. While performing the operation,
-            OTBN is busy; the !!STATUS register reflects that.
-
-            All operations signal their completion by raising the done
-            interrupt; alternatively, software may poll the !!STATUS register.
-
-            New commands are only accepted while OTBN is idle, as indicated
-            by the !!STATUS register. Writes while !!STATUS is not IDLE are
-            ignored.
-
-            Unrecognized commands are ignored.
+            The operation to perform.
 
             <table>
               <thead>
@@ -167,23 +173,23 @@
               </thead>
               <tbody>
                 <tr>
-                  <td>0x01</td>
+                  <td>0xd8</td>
                   <td>EXECUTE</td>
                   <td>
-                    Start the execution of the program stored in the
+                    Starts the execution of the program stored in the
                     instruction memory, starting at address zero.
                   </td>
                 </tr>
                 <tr>
-                  <td>0x02</td>
+                  <td>0xc3</td>
                   <td>SEC_WIPE_DMEM</td>
-                  <td>Securely remove all contents from the data memory.</td>
+                  <td>Securely removes all contents from the data memory.</td>
                 </tr>
                 <tr>
-                  <td>0x03</td>
+                  <td>0x1e</td>
                   <td>SEC_WIPE_IMEM</td>
                   <td>
-                    Securely remove all contents from the instruction memory.
+                    Securely removes all contents from the instruction memory.
                   </td>
                 </tr>
               </tbody>
@@ -198,7 +204,7 @@
       ],
     }
     { name: "CTRL",
-      desc: "control register",
+      desc: "Control Register",
       hwext: "true",
       swaccess: "rw",
       hwaccess: "hrw",
@@ -208,24 +214,20 @@
           name: "software_errs_fatal",
           resval: 0,
           desc: '''
+            Controls the reaction to software errors.
+
             When set software errors produce fatal errors, rather than
-            recoverable errors. This field can only be changed when OTBN is in
-            the IDLE state (see !!STATUS). Any writes to this field when OTBN
-            isn't in the IDLE state are ignored.
+            recoverable errors.
+
+            Writes are ignored if OTBN is not idle.
           '''
-          tags: [
-            // Don't write this field in the automated CSR tests as it is
-            // currently unimplemented
-            "excl:CsrAllTests:CsrExclWrite",
-          ]
         }
       ],
     }
     { name: "STATUS",
-      desc: "Status",
+      desc: "Status Register",
       swaccess: "ro",
       hwaccess: "hwo",
-      hwext: "true",
       fields: [
         { bits: "7:0",
           name: "status",
@@ -233,9 +235,9 @@
           // Note: Keep the list of status codes in sync with status_e in
           // otbn_pkg.sv.
           desc: '''
-            Indicates the current state OTBN is in.
+            Indicates the current operational state OTBN is in.
 
-            All BUSY flags represent an operation started by a write to the
+            All BUSY values represent an operation started by a write to the
             !!CMD register.
 
             <table>
@@ -250,30 +252,30 @@
                 <tr>
                   <td>0x00</td>
                   <td>IDLE</td>
-                  <td>OTBN is not performing any action.</td>
+                  <td>OTBN is idle: it is not performing any action.</td>
                 </tr>
                 <tr>
                   <td>0x01</td>
                   <td>BUSY_EXECUTE</td>
-                  <td>OTBN is executing software.</td>
+                  <td>OTBN is busy executing software.</td>
                 </tr>
                 <tr>
                   <td>0x02</td>
                   <td>BUSY_SEC_WIPE_DMEM</td>
-                  <td>OTBN is securely wiping the data memory.</td>
+                  <td>OTBN is busy securely wiping the data memory.</td>
                 </tr>
                 <tr>
                   <td>0x03</td>
                   <td>BUSY_SEC_WIPE_IMEM</td>
-                  <td>OTBN is securely wiping the instruction memory.</td>
+                  <td>OTBN is busy securely wiping the instruction memory.</td>
                 </tr>
                 <tr>
                   <td>0xFF</td>
                   <td>LOCKED</td>
                   <td>
                     OTBN is locked as reaction to a fatal error, and must be
-                    reset to unlock it again. See also the section on fatal
-                    error handling.
+                    reset to unlock it again. See also the the section
+                    "Reaction to Fatal Errors".
                   </td>
                 </tr>
               </tbody>
@@ -281,12 +283,14 @@
           '''
         }
       ]
-    } // register : status
+    }
     { name: "ERR_BITS",
       desc: '''
-        Description of an error detected during an operation.
+        Operation Result Register
 
-        Refer to the section "List of Errors" for a detailed description of the
+        Describes the errors detected during an operation.
+
+        Refer to the "List of Errors" section for a detailed description of the
         errors.
       ''',
       swaccess: "ro",
@@ -356,14 +360,17 @@
           desc: "A `FATAL_SOFTWARE` error was observed."
         }
       ]
-    } // register : err_bits
+    }
     { name: "FATAL_ALERT_CAUSE",
       desc: '''
-        Description of the error that caused a fatal alert.
+        Fatal Alert Cause Register
 
-        The bits of this register correspond to errors that can cause a fatal
-        alert. Software can read these bits to see what went wrong. Once set,
-        these bits cannot be cleared.
+        Describes any errors that led to a fatal alert.
+        A fatal error puts OTBN in locked state; the value of this register
+        does not change until OTBN is reset.
+
+        Refer to the "List of Errors" section for a detailed description of the
+        errors.
       '''
       swaccess: "ro",
       hwaccess: "hwo",
@@ -405,9 +412,21 @@
           desc: "A `FATAL_SOFTWARE` error was observed."
         }
       ]
-    } // register : fatal_alert_cause
+    }
     { name: "INSN_CNT",
-      desc: "Instruction Counter",
+      desc: '''
+        Instruction Count Register
+
+        Returns the number of instructions executed in the current or last
+        operation. The counter saturates at 2^32-1 and is reset to 0 at the
+        start of a new operation.
+
+        Only the EXECUTE operation counts instructions; for all other operations
+        this register remains at 0. Instructions triggering an error do not
+        count towards the total.
+
+        Always reads as 0 if OTBN is locked.
+      ''',
       hwext: "true",
       swaccess: "ro",
       hwaccess: "hwo",
@@ -416,13 +435,11 @@
           name: "insn_cnt",
           resval: 0,
           desc: '''
-            The number of instructions executed in the current or last OTBN run.
-            Saturates at 2^32-1. The counter is reset to zero when a new operation
-            is started. Instructions triggering an error do not count as being executed.
+            The number of executed instructions.
           '''
         }
       ]
-    } // register : insn_cnt
+    }
 
     // Give IMEM and DMEM 16 KiB address space, each, to allow for easy expansion
     // of the actual IMEM and DMEM sizes without changing the address map.
@@ -436,10 +453,15 @@
         data-intg-passthru: "true",
         byte-write: "false",
         desc: '''
-          Instruction Memory.
+          Instruction Memory Access
 
-          The instruction memory may only be accessed through this register while OTBN is idle, as indicated by the !!STATUS register.
-          Accesses while OTBN is not idle result in a fatal error, setting the fatal_illegal_bus_access error bit.
+          The instruction memory may only be accessed through this window
+          while OTBN is idle.
+
+          If OTBN is busy or locked, read accesses return 0 and write accesses
+          are ignored.
+          If OTBN is busy, any access additionally triggers an
+          ILLEGAL_BUS_ACCESS fatal error.
         '''
       }
     }
@@ -454,10 +476,15 @@
         data-intg-passthru: "true",
         byte-write: "false",
         desc: '''
-          Data Memory.
+          Data Memory Access
 
-          The data memory may only be accessed through this register while OTBN is idle, as indicated by the !!STATUS register.
-          Accesses while OTBN is not idle result in a fatal error, setting the fatal_illegal_bus_access error bit.
+          The data memory may only be accessed through this window while OTBN
+          is idle.
+
+          If OTBN is busy or locked, read accesses return 0 and write accesses
+          are ignored.
+          If OTBN is busy, any access additionally triggers an
+          ILLEGAL_BUS_ACCESS fatal error.
         '''
       }
     }

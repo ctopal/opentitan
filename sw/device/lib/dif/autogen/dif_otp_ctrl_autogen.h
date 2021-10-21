@@ -36,6 +36,19 @@ typedef struct dif_otp_ctrl {
 } dif_otp_ctrl_t;
 
 /**
+ * Creates a new handle for a(n) otp_ctrl peripheral.
+ *
+ * This function does not actuate the hardware.
+ *
+ * @param base_addr The MMIO base address of the otp_ctrl peripheral.
+ * @param[out] otp_ctrl Out param for the initialized handle.
+ * @return The result of the operation.
+ */
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_otp_ctrl_init(mmio_region_t base_addr,
+                               dif_otp_ctrl_t *otp_ctrl);
+
+/**
  * A otp_ctrl interrupt request type.
  */
 typedef enum dif_otp_ctrl_irq {
@@ -57,15 +70,6 @@ typedef enum dif_otp_ctrl_irq {
  * function.
  */
 typedef uint32_t dif_otp_ctrl_irq_state_snapshot_t;
-
-/**
- * A snapshot of the enablement state of the interrupts for this IP.
- *
- * This is an opaque type, to be used with the
- * `dif_otp_ctrl_irq_disable_all()` and `dif_otp_ctrl_irq_restore_all()`
- * functions.
- */
-typedef uint32_t dif_otp_ctrl_irq_enable_snapshot_t;
 
 /**
  * Returns whether a particular interrupt is currently pending.
@@ -105,6 +109,27 @@ dif_result_t dif_otp_ctrl_irq_acknowledge(const dif_otp_ctrl_t *otp_ctrl,
                                           dif_otp_ctrl_irq_t irq);
 
 /**
+ * Forces a particular interrupt, causing it to be serviced as if hardware had
+ * asserted it.
+ *
+ * @param otp_ctrl A otp_ctrl handle.
+ * @param irq An interrupt request.
+ * @return The result of the operation.
+ */
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_otp_ctrl_irq_force(const dif_otp_ctrl_t *otp_ctrl,
+                                    dif_otp_ctrl_irq_t irq);
+
+/**
+ * A snapshot of the enablement state of the interrupts for this IP.
+ *
+ * This is an opaque type, to be used with the
+ * `dif_otp_ctrl_irq_disable_all()` and `dif_otp_ctrl_irq_restore_all()`
+ * functions.
+ */
+typedef uint32_t dif_otp_ctrl_irq_enable_snapshot_t;
+
+/**
  * Checks whether a particular interrupt is currently enabled or disabled.
  *
  * @param otp_ctrl A otp_ctrl handle.
@@ -129,18 +154,6 @@ OT_WARN_UNUSED_RESULT
 dif_result_t dif_otp_ctrl_irq_set_enabled(const dif_otp_ctrl_t *otp_ctrl,
                                           dif_otp_ctrl_irq_t irq,
                                           dif_toggle_t state);
-
-/**
- * Forces a particular interrupt, causing it to be serviced as if hardware had
- * asserted it.
- *
- * @param otp_ctrl A otp_ctrl handle.
- * @param irq An interrupt request.
- * @return The result of the operation.
- */
-OT_WARN_UNUSED_RESULT
-dif_result_t dif_otp_ctrl_irq_force(const dif_otp_ctrl_t *otp_ctrl,
-                                    dif_otp_ctrl_irq_t irq);
 
 /**
  * Disables all interrupts, optionally snapshotting all enable states for later

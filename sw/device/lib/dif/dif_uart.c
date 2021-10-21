@@ -86,15 +86,6 @@ static size_t uart_bytes_receive(const dif_uart_t *uart, size_t bytes_requested,
   return bytes_read;
 }
 
-dif_result_t dif_uart_init(mmio_region_t base_addr, dif_uart_t *uart) {
-  if (uart == NULL) {
-    return kDifBadArg;
-  }
-
-  uart->base_addr = base_addr;
-  return kDifOk;
-}
-
 dif_result_t dif_uart_configure(const dif_uart_t *uart,
                                 dif_uart_config_t config) {
   if (uart == NULL) {
@@ -119,8 +110,13 @@ dif_result_t dif_uart_configure(const dif_uart_t *uart,
 
   // NCO creates 16x of baudrate. So, in addition to the nco_width,
   // 2^4 should be multiplied.
+  // If uart baud rate is 1.5Mbps and IO is 24Mhz, NCO is 0x10000, which is over
+  // the NCO width, use NCO = 0xffff for this case since the error is tolerable.
+  // Refer to #4263
   uint64_t nco =
-      ((uint64_t)config.baudrate << (nco_width + 4)) / config.clk_freq_hz;
+      ((uint64_t)config.baudrate == 1500000 && config.clk_freq_hz == 24000000)
+          ? 0xffff
+          : ((uint64_t)config.baudrate << (nco_width + 4)) / config.clk_freq_hz;
   uint32_t nco_masked = nco & UART_CTRL_NCO_MASK;
 
   // Requested baudrate is too high for the given clock frequency.

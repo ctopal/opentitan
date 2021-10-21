@@ -195,9 +195,9 @@ static uint32_t read_hex_32(const char *str) {
 // Read through trace output (in the lines argument) to pick up any write to
 // the named CSR register, updating *dest. If there is no such write and
 // required is true, returns false. Otherwise returns true.
-static bool read_ext_reg(const std::string &reg_name,
-                         const std::vector<std::string> &lines, uint32_t *dest,
-                         bool required) {
+static void read_ext_reg(const std::string &reg_name,
+                         const std::vector<std::string> &lines,
+                         uint32_t *dest) {
   assert(dest);
 
   // We're interested in lines that show an update to the external register
@@ -208,7 +208,6 @@ static bool read_ext_reg(const std::string &reg_name,
   std::smatch match;
 
   uint32_t val = 0;
-  bool found = false;
 
   for (const auto &line : lines) {
     if (std::regex_match(line, match, re)) {
@@ -217,16 +216,8 @@ static bool read_ext_reg(const std::string &reg_name,
       // failure or overflow.
       assert(match.size() == 2);
       *dest = (uint32_t)strtoul(match[1].str().c_str(), nullptr, 16);
-      found = true;
     }
   }
-
-  if (required && !found) {
-    std::cerr << "ERROR: Expected register `" << reg_name
-              << "' not found in output.";
-    return false;
-  }
-  return true;
 }
 
 ISSWrapper::ISSWrapper() : tmpdir(new TmpDir()) {
@@ -339,23 +330,7 @@ void ISSWrapper::dump_d(const std::string &path) const {
   run_command(oss.str(), nullptr);
 }
 
-void ISSWrapper::start() {
-  std::ostringstream oss;
-  oss << "start "
-      << "\n";
-  run_command(oss.str(), nullptr);
-
-  // Zero our mirror of INSN_CNT. This gets zeroed on this cycle in the Python
-  // model, but the text-based interface doesn't expose the change (and doing
-  // so would require some complicated rejigging). We'll get valid numbers as
-  // soon as an instruction executes, but zeroing here avoids having an old
-  // number for the stall cycles at the start of the second and subsequent
-  // runs.
-  mirrored_.insn_cnt = 0;
-
-  // Set our mirror of STATUS to BUSY_EXECUTE (= 1).
-  mirrored_.status = 1;
-}
+void ISSWrapper::start() { run_command("start\n", nullptr); }
 
 void ISSWrapper::edn_rnd_cdc_done() {
   run_command("edn_rnd_cdc_done\n", nullptr);
@@ -377,32 +352,42 @@ int ISSWrapper::step(bool gen_trace) {
 
   run_command("step\n", &lines);
   if (gen_trace) {
-    error = !OtbnTraceChecker::get().OnIssTrace(lines);
+    if (!OtbnTraceChecker::get().OnIssTrace(lines)) {
+      return -1;
+    }
   }
 
   // Try to read STATUS, which is written when execution ends. Execution has
   // finished if status_ is either 0 (IDLE) or 0xff (LOCKED)
-  read_ext_reg("STATUS", lines, &mirrored_.status, false);
-  bool done = (mirrored_.status == 0) || (mirrored_.status == 0xff);
+  bool was_stopped = mirrored_.stopped();
+  read_ext_reg("STATUS", lines, &mirrored_.status);
+  bool is_stopped = mirrored_.stopped();
+  bool done = is_stopped && !was_stopped;
 
-  // Always try to read INSN_CNT
-  read_ext_reg("INSN_CNT", lines, &mirrored_.insn_cnt, false);
+  // Also try to read INSN_CNT, ERR_BITS and STOP_PC. The latter two only get
+  // updated around the end of an operation but the precise timing is slightly
+  // in flux, so it's easiest to just allow updates whenever they arrive.
+  read_ext_reg("INSN_CNT", lines, &mirrored_.insn_cnt);
+  read_ext_reg("ERR_BITS", lines, &mirrored_.err_bits);
+  read_ext_reg("STOP_PC", lines, &mirrored_.stop_pc);
 
-  // If we've just finished, try to read ERR_BITS and STOP_PC, storing
-  // them into fields on this structure. The caller will retrieve them
-  // after we've returned.
-  if (done) {
-    error |= !read_ext_reg("ERR_BITS", lines, &mirrored_.err_bits, true);
-    error |= !read_ext_reg("STOP_PC", lines, &mirrored_.stop_pc, true);
-  }
+  return done ? 1 : 0;
+}
 
-  return error ? -1 : (done ? 1 : 0);
+void ISSWrapper::invalidate_imem() {
+  run_command("invalidate_imem\n", nullptr);
 }
 
 void ISSWrapper::reset(bool gen_trace) {
   if (gen_trace)
     OtbnTraceChecker::get().Flush();
+
   run_command("reset\n", nullptr);
+
+  // Zero our mirror of INSN_CNT. We'll get the corresponding zero value from
+  // the ISS one cycle *after* start, but clearing it here avoids a glitch
+  // before that.
+  mirrored_.insn_cnt = 0;
 }
 
 void ISSWrapper::get_regs(std::array<uint32_t, 32> *gprs,

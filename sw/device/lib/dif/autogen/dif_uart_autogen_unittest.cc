@@ -4,7 +4,7 @@
 
 // This file is auto-generated.
 
-#include "sw/device/lib/dif/dif_uart.h"
+#include "sw/device/lib/dif/autogen/dif_uart_autogen.h"
 
 #include "gtest/gtest.h"
 #include "sw/device/lib/base/mmio.h"
@@ -16,6 +16,7 @@ namespace dif_uart_autogen_unittest {
 namespace {
 using ::mock_mmio::MmioTest;
 using ::mock_mmio::MockDevice;
+using ::testing::Eq;
 using ::testing::Test;
 
 class UartTest : public Test, public MmioTest {
@@ -23,7 +24,15 @@ class UartTest : public Test, public MmioTest {
   dif_uart_t uart_ = {.base_addr = dev().region()};
 };
 
-using ::testing::Eq;
+class InitTest : public UartTest {};
+
+TEST_F(InitTest, NullArgs) {
+  EXPECT_EQ(dif_uart_init({.base_addr = dev().region()}, nullptr), kDifBadArg);
+}
+
+TEST_F(InitTest, Success) {
+  EXPECT_EQ(dif_uart_init({.base_addr = dev().region()}, &uart_), kDifOk);
+}
 
 class IrqGetStateTest : public UartTest {};
 
@@ -122,6 +131,29 @@ TEST_F(IrqAcknowledgeTest, Success) {
   EXPECT_EQ(dif_uart_irq_acknowledge(&uart_, kDifUartIrqRxParityErr), kDifOk);
 }
 
+class IrqForceTest : public UartTest {};
+
+TEST_F(IrqForceTest, NullArgs) {
+  EXPECT_EQ(dif_uart_irq_force(nullptr, kDifUartIrqTxWatermark), kDifBadArg);
+}
+
+TEST_F(IrqForceTest, BadIrq) {
+  EXPECT_EQ(dif_uart_irq_force(nullptr, static_cast<dif_uart_irq_t>(32)),
+            kDifBadArg);
+}
+
+TEST_F(IrqForceTest, Success) {
+  // Force first IRQ.
+  EXPECT_WRITE32(UART_INTR_TEST_REG_OFFSET,
+                 {{UART_INTR_TEST_TX_WATERMARK_BIT, true}});
+  EXPECT_EQ(dif_uart_irq_force(&uart_, kDifUartIrqTxWatermark), kDifOk);
+
+  // Force last IRQ.
+  EXPECT_WRITE32(UART_INTR_TEST_REG_OFFSET,
+                 {{UART_INTR_TEST_RX_PARITY_ERR_BIT, true}});
+  EXPECT_EQ(dif_uart_irq_force(&uart_, kDifUartIrqRxParityErr), kDifOk);
+}
+
 class IrqGetEnabledTest : public UartTest {};
 
 TEST_F(IrqGetEnabledTest, NullArgs) {
@@ -202,29 +234,6 @@ TEST_F(IrqSetEnabledTest, Success) {
                 {{UART_INTR_ENABLE_RX_PARITY_ERR_BIT, 0x1, false}});
   EXPECT_EQ(dif_uart_irq_set_enabled(&uart_, kDifUartIrqRxParityErr, irq_state),
             kDifOk);
-}
-
-class IrqForceTest : public UartTest {};
-
-TEST_F(IrqForceTest, NullArgs) {
-  EXPECT_EQ(dif_uart_irq_force(nullptr, kDifUartIrqTxWatermark), kDifBadArg);
-}
-
-TEST_F(IrqForceTest, BadIrq) {
-  EXPECT_EQ(dif_uart_irq_force(nullptr, static_cast<dif_uart_irq_t>(32)),
-            kDifBadArg);
-}
-
-TEST_F(IrqForceTest, Success) {
-  // Force first IRQ.
-  EXPECT_WRITE32(UART_INTR_TEST_REG_OFFSET,
-                 {{UART_INTR_TEST_TX_WATERMARK_BIT, true}});
-  EXPECT_EQ(dif_uart_irq_force(&uart_, kDifUartIrqTxWatermark), kDifOk);
-
-  // Force last IRQ.
-  EXPECT_WRITE32(UART_INTR_TEST_REG_OFFSET,
-                 {{UART_INTR_TEST_RX_PARITY_ERR_BIT, true}});
-  EXPECT_EQ(dif_uart_irq_force(&uart_, kDifUartIrqRxParityErr), kDifOk);
 }
 
 class IrqDisableAllTest : public UartTest {};

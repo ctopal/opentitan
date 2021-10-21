@@ -2,20 +2,6 @@
 # Licensed under the Apache License, Version 2.0, see LICENSE for details.
 # SPDX-License-Identifier: Apache-2.0
 
-# Autogen Pin Multiplexer DIF library
-sw_lib_dif_autogen_pinmux = declare_dependency(
-  link_with: static_library(
-    'sw_lib_dif_autogen_pinmux',
-    sources: [
-      hw_top_earlgrey_pinmux_reg_h,
-      'dif_pinmux_autogen.c',
-    ],
-    dependencies: [
-      sw_lib_mmio,
-    ],
-  )
-)
-
 # Autogen AES DIF library
 sw_lib_dif_autogen_aes = declare_dependency(
   link_with: static_library(
@@ -37,6 +23,20 @@ sw_lib_dif_autogen_alert_handler = declare_dependency(
     sources: [
       hw_ip_alert_handler_reg_h,
       'dif_alert_handler_autogen.c',
+    ],
+    dependencies: [
+      sw_lib_mmio,
+    ],
+  )
+)
+
+# Autogen Always-On Timer DIF library
+sw_lib_dif_autogen_aon_timer = declare_dependency(
+  link_with: static_library(
+    'sw_lib_dif_autogen_aon_timer',
+    sources: [
+      hw_ip_aon_timer_reg_h,
+      'dif_aon_timer_autogen.c',
     ],
     dependencies: [
       sw_lib_mmio,
@@ -156,6 +156,20 @@ sw_lib_dif_autogen_keymgr = declare_dependency(
   )
 )
 
+# Autogen KMAC DIF library
+sw_lib_dif_autogen_kmac = declare_dependency(
+  link_with: static_library(
+    'sw_lib_dif_autogen_kmac',
+    sources: [
+      hw_ip_kmac_reg_h,
+      'dif_kmac_autogen.c',
+    ],
+    dependencies: [
+      sw_lib_mmio,
+    ],
+  )
+)
+
 # Autogen Lifecycle Controller DIF library
 sw_lib_dif_autogen_lc_ctrl = declare_dependency(
   link_with: static_library(
@@ -198,6 +212,20 @@ sw_lib_dif_autogen_otp_ctrl = declare_dependency(
   )
 )
 
+# Autogen Pin Multiplexer DIF library
+sw_lib_dif_autogen_pinmux = declare_dependency(
+  link_with: static_library(
+    'sw_lib_dif_autogen_pinmux',
+    sources: [
+      hw_top_earlgrey_pinmux_reg_h,
+      'dif_pinmux_autogen.c',
+    ],
+    dependencies: [
+      sw_lib_mmio,
+    ],
+  )
+)
+
 # Autogen Power Manager DIF library
 sw_lib_dif_autogen_pwrmgr = declare_dependency(
   link_with: static_library(
@@ -226,13 +254,41 @@ sw_lib_dif_autogen_rstmgr = declare_dependency(
   )
 )
 
-# Autogen UART DIF library
-sw_lib_dif_autogen_uart = declare_dependency(
+# Autogen RV PLIC DIF library
+sw_lib_dif_autogen_rv_plic = declare_dependency(
   link_with: static_library(
-    'sw_lib_dif_autogen_uart',
+    'sw_lib_dif_autogen_rv_plic',
     sources: [
-      hw_ip_uart_reg_h,
-      'dif_uart_autogen.c',
+      hw_top_earlgrey_rv_plic_reg_h,
+      'dif_rv_plic_autogen.c',
+    ],
+    dependencies: [
+      sw_lib_mmio,
+    ],
+  )
+)
+
+# Autogen RV Timer DIF library
+sw_lib_dif_autogen_rv_timer = declare_dependency(
+  link_with: static_library(
+    'sw_lib_dif_autogen_rv_timer',
+    sources: [
+      hw_ip_rv_timer_reg_h,
+      'dif_rv_timer_autogen.c',
+    ],
+    dependencies: [
+      sw_lib_mmio,
+    ],
+  )
+)
+
+# Autogen SPI Device DIF library
+sw_lib_dif_autogen_spi_device = declare_dependency(
+  link_with: static_library(
+    'sw_lib_dif_autogen_spi_device',
+    sources: [
+      hw_ip_spi_device_reg_h,
+      'dif_spi_device_autogen.c',
     ],
     dependencies: [
       sw_lib_mmio,
@@ -247,6 +303,34 @@ sw_lib_dif_autogen_sram_ctrl = declare_dependency(
     sources: [
       hw_ip_sram_ctrl_reg_h,
       'dif_sram_ctrl_autogen.c',
+    ],
+    dependencies: [
+      sw_lib_mmio,
+    ],
+  )
+)
+
+# Autogen USB Device DIF library
+sw_lib_dif_autogen_usbdev = declare_dependency(
+  link_with: static_library(
+    'sw_lib_dif_autogen_usbdev',
+    sources: [
+      hw_ip_usbdev_reg_h,
+      'dif_usbdev_autogen.c',
+    ],
+    dependencies: [
+      sw_lib_mmio,
+    ],
+  )
+)
+
+# Autogen UART DIF library
+sw_lib_dif_autogen_uart = declare_dependency(
+  link_with: static_library(
+    'sw_lib_dif_autogen_uart',
+    sources: [
+      hw_ip_uart_reg_h,
+      'dif_uart_autogen.c',
     ],
     dependencies: [
       sw_lib_mmio,

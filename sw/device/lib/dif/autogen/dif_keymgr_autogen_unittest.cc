@@ -4,7 +4,7 @@
 
 // This file is auto-generated.
 
-#include "sw/device/lib/dif/dif_keymgr.h"
+#include "sw/device/lib/dif/autogen/dif_keymgr_autogen.h"
 
 #include "gtest/gtest.h"
 #include "sw/device/lib/base/mmio.h"
@@ -16,6 +16,7 @@ namespace dif_keymgr_autogen_unittest {
 namespace {
 using ::mock_mmio::MmioTest;
 using ::mock_mmio::MockDevice;
+using ::testing::Eq;
 using ::testing::Test;
 
 class KeymgrTest : public Test, public MmioTest {
@@ -23,7 +24,16 @@ class KeymgrTest : public Test, public MmioTest {
   dif_keymgr_t keymgr_ = {.base_addr = dev().region()};
 };
 
-using ::testing::Eq;
+class InitTest : public KeymgrTest {};
+
+TEST_F(InitTest, NullArgs) {
+  EXPECT_EQ(dif_keymgr_init({.base_addr = dev().region()}, nullptr),
+            kDifBadArg);
+}
+
+TEST_F(InitTest, Success) {
+  EXPECT_EQ(dif_keymgr_init({.base_addr = dev().region()}, &keymgr_), kDifOk);
+}
 
 class IrqGetStateTest : public KeymgrTest {};
 
@@ -111,6 +121,24 @@ TEST_F(IrqAcknowledgeTest, Success) {
   EXPECT_EQ(dif_keymgr_irq_acknowledge(&keymgr_, kDifKeymgrIrqOpDone), kDifOk);
 }
 
+class IrqForceTest : public KeymgrTest {};
+
+TEST_F(IrqForceTest, NullArgs) {
+  EXPECT_EQ(dif_keymgr_irq_force(nullptr, kDifKeymgrIrqOpDone), kDifBadArg);
+}
+
+TEST_F(IrqForceTest, BadIrq) {
+  EXPECT_EQ(dif_keymgr_irq_force(nullptr, static_cast<dif_keymgr_irq_t>(32)),
+            kDifBadArg);
+}
+
+TEST_F(IrqForceTest, Success) {
+  // Force first IRQ.
+  EXPECT_WRITE32(KEYMGR_INTR_TEST_REG_OFFSET,
+                 {{KEYMGR_INTR_TEST_OP_DONE_BIT, true}});
+  EXPECT_EQ(dif_keymgr_irq_force(&keymgr_, kDifKeymgrIrqOpDone), kDifOk);
+}
+
 class IrqGetEnabledTest : public KeymgrTest {};
 
 TEST_F(IrqGetEnabledTest, NullArgs) {
@@ -175,24 +203,6 @@ TEST_F(IrqSetEnabledTest, Success) {
   EXPECT_EQ(
       dif_keymgr_irq_set_enabled(&keymgr_, kDifKeymgrIrqOpDone, irq_state),
       kDifOk);
-}
-
-class IrqForceTest : public KeymgrTest {};
-
-TEST_F(IrqForceTest, NullArgs) {
-  EXPECT_EQ(dif_keymgr_irq_force(nullptr, kDifKeymgrIrqOpDone), kDifBadArg);
-}
-
-TEST_F(IrqForceTest, BadIrq) {
-  EXPECT_EQ(dif_keymgr_irq_force(nullptr, static_cast<dif_keymgr_irq_t>(32)),
-            kDifBadArg);
-}
-
-TEST_F(IrqForceTest, Success) {
-  // Force first IRQ.
-  EXPECT_WRITE32(KEYMGR_INTR_TEST_REG_OFFSET,
-                 {{KEYMGR_INTR_TEST_OP_DONE_BIT, true}});
-  EXPECT_EQ(dif_keymgr_irq_force(&keymgr_, kDifKeymgrIrqOpDone), kDifOk);
 }
 
 class IrqDisableAllTest : public KeymgrTest {};

@@ -7,7 +7,7 @@ import argparse
 import sys
 
 from sim.elf import load_elf
-from sim.sim import OTBNSim
+from sim.standalonesim import StandaloneSim
 from sim.stats import ExecutionStatAnalyzer
 
 
@@ -41,13 +41,13 @@ def main() -> int:
 
     collect_stats = args.dump_stats is not None
 
-    sim = OTBNSim()
+    sim = StandaloneSim()
     exp_end_addr = load_elf(sim, args.elf)
 
     sim.state.ext_regs.commit()
 
-    sim.start()
-    sim.run(verbose=args.verbose, collect_stats=collect_stats)
+    sim.start(collect_stats)
+    sim.run(verbose=args.verbose)
 
     if exp_end_addr is not None:
         if sim.state.pc != exp_end_addr:

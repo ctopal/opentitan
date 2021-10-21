@@ -88,16 +88,6 @@ static void rstmgr_reset_info_clear(mmio_region_t base_addr) {
   mmio_region_write32(base_addr, RSTMGR_RESET_INFO_REG_OFFSET, UINT32_MAX);
 }
 
-dif_result_t dif_rstmgr_init(mmio_region_t base_addr, dif_rstmgr_t *handle) {
-  if (handle == NULL) {
-    return kDifBadArg;
-  }
-
-  handle->base_addr = base_addr;
-
-  return kDifOk;
-}
-
 dif_result_t dif_rstmgr_reset(const dif_rstmgr_t *handle) {
   if (handle == NULL) {
     return kDifBadArg;
@@ -284,6 +274,17 @@ dif_result_t dif_rstmgr_software_reset_is_held(
 
   // When the bit is cleared - peripheral is held in reset.
   *asserted = !bitfield_bit32_read(bitfield, peripheral);
+
+  return kDifOk;
+}
+
+dif_result_t dif_rstmgr_software_device_reset(const dif_rstmgr_t *handle) {
+  if (handle == NULL) {
+    return kDifBadArg;
+  }
+
+  // TODO, convert to MultiBitBool when available
+  mmio_region_write32(handle->base_addr, RSTMGR_RESET_REQ_REG_OFFSET, 0xa);
 
   return kDifOk;
 }

@@ -16,6 +16,7 @@
 #include "sw/device/lib/runtime/hart.h"
 #include "sw/device/lib/runtime/print.h"
 #include "sw/device/silicon_creator/lib/base/sec_mmio.h"
+#include "sw/device/silicon_creator/lib/drivers/flash_ctrl.h"
 #include "sw/device/silicon_creator/lib/drivers/keymgr.h"
 #include "sw/device/silicon_creator/lib/drivers/lifecycle.h"
 #include "sw/device/silicon_creator/lib/drivers/retention_sram.h"
@@ -26,6 +27,7 @@
 #include "sw/device/silicon_creator/lib/sigverify.h"
 #include "sw/device/silicon_creator/mask_rom/boot_policy.h"
 #include "sw/device/silicon_creator/mask_rom/mask_rom_epmp.h"
+#include "sw/device/silicon_creator/mask_rom/primitive_bootstrap.h"
 #include "sw/device/silicon_creator/mask_rom/sigverify_keys.h"
 
 #include "hw/top_earlgrey/sw/autogen/top_earlgrey.h"
@@ -67,6 +69,7 @@ static void mask_rom_init(void) {
   // Initialize the shutdown policy according to lifecycle state.
   lc_state = lifecycle_state_get();
   shutdown_init(lc_state);
+  flash_ctrl_init();
   // Initiaize in-memory copy of the ePMP register configuration.
   mask_rom_epmp_state_init(&epmp);
 
@@ -97,8 +100,6 @@ static void mask_rom_init(void) {
   // TODO(lowRISC/opentitan#8536): Integrate RND driver.
   sec_mmio_check_values(/*rnd_offset=*/0);
   sec_mmio_check_counters(/*expected_check_count=*/1);
-
-  // TODO: Bootstrap.
 }
 
 /**
@@ -192,12 +193,18 @@ static rom_error_t mask_rom_try_boot(void) {
 void mask_rom_main(void) {
   mask_rom_init();
 
-  // TODO(#7894): What (if anything) should we print at startup?
+  // TODO(lowrisc/opentitan#7894): What (if anything) should we print at
+  // startup?
   base_printf("OpenTitan: \"version-tag\"\r\n");
   base_printf("lc_state: %s\r\n", lifecycle_state_name[lc_state]);
 
-  rom_error_t error = mask_rom_try_boot();
-  shutdown_finalize(error);
+  // TODO(lowrisc/opentitan#1513): Switch to EEPROM SPI device bootstrap
+  // protocol.
+  rom_error_t error = primitive_bootstrap();
+  if (error != kErrorOk) {
+    shutdown_finalize(error);
+  }
+  shutdown_finalize(mask_rom_try_boot());
 }
 
 void mask_rom_interrupt_handler(void) {

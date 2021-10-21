@@ -12,10 +12,13 @@ use opentitanlib::app::command::CommandDispatch;
 
 #[derive(Debug, StructOpt, CommandDispatch)]
 enum RootCommandHierarchy {
+    // Not flattened because `Bootstrap` is a leaf command.
+    Bootstrap(command::bootstrap::BootstrapCommand),
     // Not flattened because `Console` is a leaf command.
     Console(command::console::Console),
 
     Gpio(command::gpio::GpioCommand),
+    LoadBitstream(command::load_bitstream::LoadBitstream),
     Spi(command::spi::SpiCommand),
 
     // Flattened because `Greetings` is a subcommand hierarchy.
@@ -42,9 +45,9 @@ fn main() -> Result<()> {
         .filter(None, opts.logging)
         .init();
 
-    let mut interface = backend::create(&opts.backend_opts)?;
+    let transport = backend::create(&opts.backend_opts)?;
 
-    if let Some(value) = opts.command.run(&opts, &mut *interface)? {
+    if let Some(value) = opts.command.run(&opts, &transport)? {
         println!("{}", serde_json::to_string_pretty(&value)?);
     }
     Ok(())

@@ -5,13 +5,13 @@
 import py
 import os
 
-from sim.sim import OTBNSim
+from sim.standalonesim import StandaloneSim
 from sim.stats import ExecutionStats
 import testutil
 
 
-def _run_sim_for_stats(sim: OTBNSim) -> ExecutionStats:
-    sim.run(verbose=False, collect_stats=True)
+def _run_sim_for_stats(sim: StandaloneSim) -> ExecutionStats:
+    sim.run(verbose=False)
 
     # Ensure that the execution was successful.
     assert sim.state.ext_regs.read('ERR_BITS', False) == 0
@@ -23,12 +23,12 @@ def _run_sim_for_stats(sim: OTBNSim) -> ExecutionStats:
 def _simulate_asm_file(asm_file: str, tmpdir: py.path.local) -> ExecutionStats:
     '''Run the OTBN simulator, collect statistics, and return them.'''
 
-    sim = testutil.prepare_sim_for_asm_file(asm_file, tmpdir)
+    sim = testutil.prepare_sim_for_asm_file(asm_file, tmpdir, True)
     return _run_sim_for_stats(sim)
 
 
 def _simulate_asm_str(assembly: str, tmpdir: py.path.local) -> ExecutionStats:
-    sim = testutil.prepare_sim_for_asm_str(assembly, tmpdir)
+    sim = testutil.prepare_sim_for_asm_str(assembly, tmpdir, True)
     return _run_sim_for_stats(sim)
 
 
@@ -136,7 +136,7 @@ def test_general_and_loop(tmpdir: py.path.local) -> None:
     stats = _simulate_asm_file(asm_file, tmpdir)
 
     # General statistics
-    assert stats.stall_count == 2
+    assert stats.stall_count == 3
     assert stats.get_insn_count() == 28
     assert stats.insn_histo == {'addi': 22, 'loop': 4, 'loopi': 1, 'ecall': 1}
     assert stats.func_calls == []
