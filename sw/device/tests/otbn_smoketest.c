@@ -133,14 +133,10 @@ static void test_barrett384(otbn_t *otbn_ctx) {
 static void test_err_test(otbn_t *otbn_ctx) {
   CHECK(otbn_load_app(otbn_ctx, kAppErrTest) == kOtbnOk);
 
-<<<<<<< HEAD
-  CHECK(dif_otbn_control_software_errs_fatal(&otbn_ctx->dif, true) == kDifOk);
-=======
   // TODO: Turn on software_errs_fatal for err_test. Currently the model doesn't
   // support this feature so turning it on leads to a failure when run with the
   // model.
   CHECK(dif_otbn_set_ctrl_software_errs_fatal(&otbn_ctx->dif, false) == kDifOk);
->>>>>>> c7585e793a8500811c2dfa2bfdab6975db75bb4f
   CHECK(otbn_execute(otbn_ctx) == kOtbnOk);
   CHECK(otbn_busy_wait_for_done(otbn_ctx) == kOtbnOperationFailed);
 
