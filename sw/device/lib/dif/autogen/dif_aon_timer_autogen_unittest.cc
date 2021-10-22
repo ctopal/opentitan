@@ -4,7 +4,7 @@
 
 // This file is auto-generated.
 
-#include "sw/device/lib/dif/dif_aon_timer.h"
+#include "sw/device/lib/dif/autogen/dif_aon_timer_autogen.h"
 
 #include "gtest/gtest.h"
 #include "sw/device/lib/base/mmio.h"
@@ -16,6 +16,7 @@ namespace dif_aon_timer_autogen_unittest {
 namespace {
 using ::mock_mmio::MmioTest;
 using ::mock_mmio::MockDevice;
+using ::testing::Eq;
 using ::testing::Test;
 
 class AonTimerTest : public Test, public MmioTest {
@@ -23,7 +24,17 @@ class AonTimerTest : public Test, public MmioTest {
   dif_aon_timer_t aon_timer_ = {.base_addr = dev().region()};
 };
 
-using ::testing::Eq;
+class InitTest : public AonTimerTest {};
+
+TEST_F(InitTest, NullArgs) {
+  EXPECT_EQ(dif_aon_timer_init({.base_addr = dev().region()}, nullptr),
+            kDifBadArg);
+}
+
+TEST_F(InitTest, Success) {
+  EXPECT_EQ(dif_aon_timer_init({.base_addr = dev().region()}, &aon_timer_),
+            kDifOk);
+}
 
 class IrqGetStateTest : public AonTimerTest {};
 
@@ -100,6 +111,19 @@ TEST_F(IrqIsPendingTest, Success) {
                 &aon_timer_, kDifAonTimerIrqWdogTimerBark, &irq_state),
             kDifOk);
   EXPECT_FALSE(irq_state);
+}
+
+class AcknowledgeAllTest : public AonTimerTest {};
+
+TEST_F(AcknowledgeAllTest, NullArgs) {
+  EXPECT_EQ(dif_aon_timer_irq_acknowledge_all(nullptr), kDifBadArg);
+}
+
+TEST_F(AcknowledgeAllTest, Success) {
+  EXPECT_WRITE32(AON_TIMER_INTR_STATE_REG_OFFSET,
+                 std::numeric_limits<uint32_t>::max());
+
+  EXPECT_EQ(dif_aon_timer_irq_acknowledge_all(&aon_timer_), kDifOk);
 }
 
 class IrqAcknowledgeTest : public AonTimerTest {};

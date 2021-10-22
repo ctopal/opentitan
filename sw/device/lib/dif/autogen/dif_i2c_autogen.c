@@ -4,15 +4,27 @@
 
 // This file is auto-generated.
 
-#include "sw/device/lib/dif/dif_i2c.h"
+#include "sw/device/lib/dif/autogen/dif_i2c_autogen.h"
+#include <stdint.h>
 
 #include "i2c_regs.h"  // Generated.
+
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_i2c_init(mmio_region_t base_addr, dif_i2c_t *i2c) {
+  if (i2c == NULL) {
+    return kDifBadArg;
+  }
+
+  i2c->base_addr = base_addr;
+
+  return kDifOk;
+}
 
 /**
  * Get the corresponding interrupt register bit offset of the IRQ. If the IP's
  * HJSON does NOT have a field "no_auto_intr_regs = true", then the
- * "<ip>_INTR_COMMON_<irq>_BIT" macro can used. Otherwise, special cases will
- * exist, as templated below.
+ * "<ip>_INTR_COMMON_<irq>_BIT" macro can be used. Otherwise, special cases
+ * will exist, as templated below.
  */
 static bool i2c_get_irq_bit_index(dif_i2c_irq_t irq,
                                   bitfield_bit32_index_t *index_out) {
@@ -100,6 +112,18 @@ dif_result_t dif_i2c_irq_is_pending(const dif_i2c_t *i2c, dif_i2c_irq_t irq,
       mmio_region_read32(i2c->base_addr, I2C_INTR_STATE_REG_OFFSET);
 
   *is_pending = bitfield_bit32_read(intr_state_reg, index);
+
+  return kDifOk;
+}
+
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_i2c_irq_acknowledge_all(const dif_i2c_t *i2c) {
+  if (i2c == NULL) {
+    return kDifBadArg;
+  }
+
+  // Writing to the register clears the corresponding bits (Write-one clear).
+  mmio_region_write32(i2c->base_addr, I2C_INTR_STATE_REG_OFFSET, UINT32_MAX);
 
   return kDifOk;
 }

@@ -36,6 +36,19 @@ typedef struct dif_rv_timer {
 } dif_rv_timer_t;
 
 /**
+ * Creates a new handle for a(n) rv_timer peripheral.
+ *
+ * This function does not actuate the hardware.
+ *
+ * @param base_addr The MMIO base address of the rv_timer peripheral.
+ * @param[out] rv_timer Out param for the initialized handle.
+ * @return The result of the operation.
+ */
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_rv_timer_init(mmio_region_t base_addr,
+                               dif_rv_timer_t *rv_timer);
+
+/**
  * A rv_timer interrupt request type.
  */
 typedef enum dif_rv_timer_irq {
@@ -54,7 +67,7 @@ typedef enum dif_rv_timer_irq {
 typedef uint32_t dif_rv_timer_irq_state_snapshot_t;
 
 /**
- * Returns whether a particular interrupt is currently pending.
+ * Returns the state of all interrupts (i.e., pending or not) for this IP.
  *
  * @param rv_timer A rv_timer handle.
  * @param hart_id The hart to manipulate.
@@ -78,6 +91,17 @@ OT_WARN_UNUSED_RESULT
 dif_result_t dif_rv_timer_irq_is_pending(const dif_rv_timer_t *rv_timer,
                                          dif_rv_timer_irq_t irq,
                                          bool *is_pending);
+
+/**
+ * Acknowledges all interrupts, indicating to the hardware that all
+ * interrupts have been successfully serviced.
+ *
+ * @param rv_timer A rv_timer handle.
+ * @return The result of the operation.
+ */
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_rv_timer_irq_acknowledge_all(const dif_rv_timer_t *rv_timer,
+                                              uint32_t hart_id);
 
 /**
  * Acknowledges a particular interrupt, indicating to the hardware that it has

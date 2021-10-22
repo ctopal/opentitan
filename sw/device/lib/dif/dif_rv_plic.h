@@ -66,16 +66,19 @@ typedef uint32_t dif_rv_plic_irq_id_t;
 typedef uint32_t dif_rv_plic_target_t;
 
 /**
- * Creates a new handle for PLIC.
+ * Resets the PLIC to a clean state.
  *
- * This function does not actuate the hardware.
  *
- * @param params Hardware instantiation parameters.
- * @param[out] plic Out param for the initialized handle.
+ * This function resets all the relevant PLIC registers, apart from the CC
+ * register. There is no reliable way of knowing the ID of an IRQ that has
+ * claimed the CC register, so we assume that the previous "owner" of the
+ * resource has cleared/completed the CC access.
+ *
+ * @param plic A PLIC handle.
  * @return The result of the operation.
  */
 OT_WARN_UNUSED_RESULT
-dif_result_t dif_rv_plic_init(mmio_region_t base_addr, dif_rv_plic_t *plic);
+dif_result_t dif_rv_plic_reset(const dif_rv_plic_t *plic);
 
 /**
  * Returns whether a particular interrupt is currently pending.

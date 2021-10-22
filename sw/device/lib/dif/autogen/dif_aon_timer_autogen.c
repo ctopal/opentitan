@@ -4,11 +4,13 @@
 
 // This file is auto-generated.
 
-#include "sw/device/lib/dif/dif_aon_timer.h"
+#include "sw/device/lib/dif/autogen/dif_aon_timer_autogen.h"
+#include <stdint.h>
 
 #include "aon_timer_regs.h"  // Generated.
 
 #include <assert.h>
+
 static_assert(AON_TIMER_INTR_STATE_WKUP_TIMER_EXPIRED_BIT ==
                   AON_TIMER_INTR_TEST_WKUP_TIMER_EXPIRED_BIT,
               "Expected IRQ bit offsets to match across STATE/TEST regs.");
@@ -16,11 +18,23 @@ static_assert(AON_TIMER_INTR_STATE_WDOG_TIMER_BARK_BIT ==
                   AON_TIMER_INTR_TEST_WDOG_TIMER_BARK_BIT,
               "Expected IRQ bit offsets to match across STATE/TEST regs.");
 
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_aon_timer_init(mmio_region_t base_addr,
+                                dif_aon_timer_t *aon_timer) {
+  if (aon_timer == NULL) {
+    return kDifBadArg;
+  }
+
+  aon_timer->base_addr = base_addr;
+
+  return kDifOk;
+}
+
 /**
  * Get the corresponding interrupt register bit offset of the IRQ. If the IP's
  * HJSON does NOT have a field "no_auto_intr_regs = true", then the
- * "<ip>_INTR_COMMON_<irq>_BIT" macro can used. Otherwise, special cases will
- * exist, as templated below.
+ * "<ip>_INTR_COMMON_<irq>_BIT" macro can be used. Otherwise, special cases
+ * will exist, as templated below.
  */
 static bool aon_timer_get_irq_bit_index(dif_aon_timer_irq_t irq,
                                         bitfield_bit32_index_t *index_out) {
@@ -69,6 +83,20 @@ dif_result_t dif_aon_timer_irq_is_pending(const dif_aon_timer_t *aon_timer,
       mmio_region_read32(aon_timer->base_addr, AON_TIMER_INTR_STATE_REG_OFFSET);
 
   *is_pending = bitfield_bit32_read(intr_state_reg, index);
+
+  return kDifOk;
+}
+
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_aon_timer_irq_acknowledge_all(
+    const dif_aon_timer_t *aon_timer) {
+  if (aon_timer == NULL) {
+    return kDifBadArg;
+  }
+
+  // Writing to the register clears the corresponding bits (Write-one clear).
+  mmio_region_write32(aon_timer->base_addr, AON_TIMER_INTR_STATE_REG_OFFSET,
+                      UINT32_MAX);
 
   return kDifOk;
 }

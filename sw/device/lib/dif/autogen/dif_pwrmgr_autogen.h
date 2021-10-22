@@ -36,6 +36,18 @@ typedef struct dif_pwrmgr {
 } dif_pwrmgr_t;
 
 /**
+ * Creates a new handle for a(n) pwrmgr peripheral.
+ *
+ * This function does not actuate the hardware.
+ *
+ * @param base_addr The MMIO base address of the pwrmgr peripheral.
+ * @param[out] pwrmgr Out param for the initialized handle.
+ * @return The result of the operation.
+ */
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_pwrmgr_init(mmio_region_t base_addr, dif_pwrmgr_t *pwrmgr);
+
+/**
  * A pwrmgr interrupt request type.
  */
 typedef enum dif_pwrmgr_irq {
@@ -54,7 +66,7 @@ typedef enum dif_pwrmgr_irq {
 typedef uint32_t dif_pwrmgr_irq_state_snapshot_t;
 
 /**
- * Returns whether a particular interrupt is currently pending.
+ * Returns the state of all interrupts (i.e., pending or not) for this IP.
  *
  * @param pwrmgr A pwrmgr handle.
  * @param[out] snapshot Out-param for interrupt state snapshot.
@@ -75,6 +87,16 @@ dif_result_t dif_pwrmgr_irq_get_state(
 OT_WARN_UNUSED_RESULT
 dif_result_t dif_pwrmgr_irq_is_pending(const dif_pwrmgr_t *pwrmgr,
                                        dif_pwrmgr_irq_t irq, bool *is_pending);
+
+/**
+ * Acknowledges all interrupts, indicating to the hardware that all
+ * interrupts have been successfully serviced.
+ *
+ * @param pwrmgr A pwrmgr handle.
+ * @return The result of the operation.
+ */
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_pwrmgr_irq_acknowledge_all(const dif_pwrmgr_t *pwrmgr);
 
 /**
  * Acknowledges a particular interrupt, indicating to the hardware that it has

@@ -4,7 +4,7 @@
 
 // This file is auto-generated.
 
-#include "sw/device/lib/dif/dif_edn.h"
+#include "sw/device/lib/dif/autogen/dif_edn_autogen.h"
 
 #include "gtest/gtest.h"
 #include "sw/device/lib/base/mmio.h"
@@ -16,6 +16,7 @@ namespace dif_edn_autogen_unittest {
 namespace {
 using ::mock_mmio::MmioTest;
 using ::mock_mmio::MockDevice;
+using ::testing::Eq;
 using ::testing::Test;
 
 class EdnTest : public Test, public MmioTest {
@@ -23,7 +24,15 @@ class EdnTest : public Test, public MmioTest {
   dif_edn_t edn_ = {.base_addr = dev().region()};
 };
 
-using ::testing::Eq;
+class InitTest : public EdnTest {};
+
+TEST_F(InitTest, NullArgs) {
+  EXPECT_EQ(dif_edn_init({.base_addr = dev().region()}, nullptr), kDifBadArg);
+}
+
+TEST_F(InitTest, Success) {
+  EXPECT_EQ(dif_edn_init({.base_addr = dev().region()}, &edn_), kDifOk);
+}
 
 class IrqGetStateTest : public EdnTest {};
 
@@ -96,6 +105,19 @@ TEST_F(IrqIsPendingTest, Success) {
   EXPECT_EQ(dif_edn_irq_is_pending(&edn_, kDifEdnIrqEdnFatalErr, &irq_state),
             kDifOk);
   EXPECT_FALSE(irq_state);
+}
+
+class AcknowledgeAllTest : public EdnTest {};
+
+TEST_F(AcknowledgeAllTest, NullArgs) {
+  EXPECT_EQ(dif_edn_irq_acknowledge_all(nullptr), kDifBadArg);
+}
+
+TEST_F(AcknowledgeAllTest, Success) {
+  EXPECT_WRITE32(EDN_INTR_STATE_REG_OFFSET,
+                 std::numeric_limits<uint32_t>::max());
+
+  EXPECT_EQ(dif_edn_irq_acknowledge_all(&edn_), kDifOk);
 }
 
 class IrqAcknowledgeTest : public EdnTest {};

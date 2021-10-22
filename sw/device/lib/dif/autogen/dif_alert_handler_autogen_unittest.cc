@@ -4,7 +4,7 @@
 
 // This file is auto-generated.
 
-#include "sw/device/lib/dif/dif_alert_handler.h"
+#include "sw/device/lib/dif/autogen/dif_alert_handler_autogen.h"
 
 #include "gtest/gtest.h"
 #include "sw/device/lib/base/mmio.h"
@@ -16,6 +16,7 @@ namespace dif_alert_handler_autogen_unittest {
 namespace {
 using ::mock_mmio::MmioTest;
 using ::mock_mmio::MockDevice;
+using ::testing::Eq;
 using ::testing::Test;
 
 class AlertHandlerTest : public Test, public MmioTest {
@@ -23,7 +24,18 @@ class AlertHandlerTest : public Test, public MmioTest {
   dif_alert_handler_t alert_handler_ = {.base_addr = dev().region()};
 };
 
-using ::testing::Eq;
+class InitTest : public AlertHandlerTest {};
+
+TEST_F(InitTest, NullArgs) {
+  EXPECT_EQ(dif_alert_handler_init({.base_addr = dev().region()}, nullptr),
+            kDifBadArg);
+}
+
+TEST_F(InitTest, Success) {
+  EXPECT_EQ(
+      dif_alert_handler_init({.base_addr = dev().region()}, &alert_handler_),
+      kDifOk);
+}
 
 class IrqGetStateTest : public AlertHandlerTest {};
 
@@ -105,6 +117,19 @@ TEST_F(IrqIsPendingTest, Success) {
                 &alert_handler_, kDifAlertHandlerIrqClassd, &irq_state),
             kDifOk);
   EXPECT_FALSE(irq_state);
+}
+
+class AcknowledgeAllTest : public AlertHandlerTest {};
+
+TEST_F(AcknowledgeAllTest, NullArgs) {
+  EXPECT_EQ(dif_alert_handler_irq_acknowledge_all(nullptr), kDifBadArg);
+}
+
+TEST_F(AcknowledgeAllTest, Success) {
+  EXPECT_WRITE32(ALERT_HANDLER_INTR_STATE_REG_OFFSET,
+                 std::numeric_limits<uint32_t>::max());
+
+  EXPECT_EQ(dif_alert_handler_irq_acknowledge_all(&alert_handler_), kDifOk);
 }
 
 class IrqAcknowledgeTest : public AlertHandlerTest {};

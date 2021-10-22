@@ -50,8 +50,21 @@ typedef struct dif_${ip.name_snake} {
   mmio_region_t base_addr;
 } dif_${ip.name_snake}_t;
 
-% if len(ip.irqs) > 0:
+/**
+ * Creates a new handle for a(n) ${ip.name_snake} peripheral.
+ *
+ * This function does not actuate the hardware.
+ *
+ * @param base_addr The MMIO base address of the ${ip.name_snake} peripheral.
+ * @param[out] ${ip.name_snake} Out param for the initialized handle.
+ * @return The result of the operation.
+ */
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_${ip.name_snake}_init(
+  mmio_region_t base_addr,
+  dif_${ip.name_snake}_t *${ip.name_snake});
 
+% if len(ip.irqs) > 0:
   /**
    * A ${ip.name_snake} interrupt request type.
    */
@@ -85,7 +98,7 @@ typedef struct dif_${ip.name_snake} {
   typedef uint32_t dif_${ip.name_snake}_irq_state_snapshot_t;
 
   /**
-   * Returns whether a particular interrupt is currently pending.
+   * Returns the state of all interrupts (i.e., pending or not) for this IP.
    *
    * @param ${ip.name_snake} A ${ip.name_snake} handle.
   % if ip.name_snake == "rv_timer":
@@ -115,6 +128,21 @@ typedef struct dif_${ip.name_snake} {
     const dif_${ip.name_snake}_t *${ip.name_snake},
     dif_${ip.name_snake}_irq_t irq,
     bool *is_pending);
+
+  /**
+   * Acknowledges all interrupts, indicating to the hardware that all
+   * interrupts have been successfully serviced.
+   *
+   * @param ${ip.name_snake} A ${ip.name_snake} handle.
+   * @return The result of the operation.
+   */
+  OT_WARN_UNUSED_RESULT
+  dif_result_t dif_${ip.name_snake}_irq_acknowledge_all(
+    const dif_${ip.name_snake}_t *${ip.name_snake}
+  % if ip.name_snake == "rv_timer":
+    , uint32_t hart_id
+  % endif
+    );
 
   /**
    * Acknowledges a particular interrupt, indicating to the hardware that it has

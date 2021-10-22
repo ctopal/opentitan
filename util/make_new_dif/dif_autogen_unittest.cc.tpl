@@ -12,12 +12,11 @@
     This template requires the following Python objects to be passed:
 
     1. ip: See util/make_new_dif.py for the definition of the `ip` obj.
-    2. list[irq]: See util/make_new_dif.py for the definition of the `irq` obj.
 </%doc>
 
 // This file is auto-generated.
 
-#include "sw/device/lib/dif/dif_${ip.name_snake}.h"
+#include "sw/device/lib/dif/autogen/dif_${ip.name_snake}_autogen.h"
 
 #include "gtest/gtest.h"
 #include "sw/device/lib/base/mmio.h"
@@ -29,6 +28,7 @@ namespace dif_${ip.name_snake}_autogen_unittest {
 namespace {
   using ::mock_mmio::MmioTest;
   using ::mock_mmio::MockDevice;
+  using ::testing::Eq;
   using ::testing::Test;
 
   class ${ip.name_camel}Test : public Test, public MmioTest {
@@ -36,9 +36,23 @@ namespace {
     dif_${ip.name_snake}_t ${ip.name_snake}_ = {.base_addr = dev().region()};
   };
 
-% if len(ip.irqs) > 0:
-  using ::testing::Eq;
+  class InitTest : public ${ip.name_camel}Test {};
 
+  TEST_F(InitTest, NullArgs) {
+    EXPECT_EQ(dif_${ip.name_snake}_init(
+        {.base_addr = dev().region()},
+        nullptr),
+      kDifBadArg);
+  }
+
+  TEST_F(InitTest, Success) {
+    EXPECT_EQ(dif_${ip.name_snake}_init(
+        {.base_addr = dev().region()},
+        &${ip.name_snake}_),
+      kDifOk);
+  }
+
+% if len(ip.irqs) > 0:
   class IrqGetStateTest : public ${ip.name_camel}Test {};
 
   TEST_F(IrqGetStateTest, NullArgs) {
@@ -205,6 +219,43 @@ namespace {
       kDifOk);
     EXPECT_FALSE(irq_state);
   % endif
+  }
+
+  class AcknowledgeAllTest : public ${ip.name_camel}Test {};
+
+  TEST_F(AcknowledgeAllTest, NullArgs) {
+    EXPECT_EQ(dif_${ip.name_snake}_irq_acknowledge_all(
+        nullptr 
+      % if ip.name_snake == "rv_timer":
+        , 0
+      % endif
+        ),
+      kDifBadArg);
+  }
+
+  % if ip.name_snake == "rv_timer":
+  TEST_F(AcknowledgeAllTest, BadHartId) {
+    EXPECT_EQ(dif_${ip.name_snake}_irq_acknowledge_all(
+        nullptr, ${ip.parameters["N_HARTS"].default}),
+      kDifBadArg);
+  }
+  % endif
+
+  TEST_F(AcknowledgeAllTest, Success) {
+  % if ip.name_snake == "rv_timer":
+    EXPECT_WRITE32(${ip.name_upper}_INTR_STATE0_REG_OFFSET, 
+  % else:
+    EXPECT_WRITE32(${ip.name_upper}_INTR_STATE_REG_OFFSET,
+  % endif
+      std::numeric_limits<uint32_t>::max());
+
+    EXPECT_EQ(dif_${ip.name_snake}_irq_acknowledge_all(
+        &${ip.name_snake}_ 
+      % if ip.name_snake == "rv_timer":
+        , 0
+      % endif
+        ),
+      kDifOk);
   }
 
   class IrqAcknowledgeTest : public ${ip.name_camel}Test {};

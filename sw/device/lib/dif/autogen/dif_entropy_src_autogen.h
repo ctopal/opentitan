@@ -37,6 +37,19 @@ typedef struct dif_entropy_src {
 } dif_entropy_src_t;
 
 /**
+ * Creates a new handle for a(n) entropy_src peripheral.
+ *
+ * This function does not actuate the hardware.
+ *
+ * @param base_addr The MMIO base address of the entropy_src peripheral.
+ * @param[out] entropy_src Out param for the initialized handle.
+ * @return The result of the operation.
+ */
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_entropy_src_init(mmio_region_t base_addr,
+                                  dif_entropy_src_t *entropy_src);
+
+/**
  * A entropy_src interrupt request type.
  */
 typedef enum dif_entropy_src_irq {
@@ -68,7 +81,7 @@ typedef enum dif_entropy_src_irq {
 typedef uint32_t dif_entropy_src_irq_state_snapshot_t;
 
 /**
- * Returns whether a particular interrupt is currently pending.
+ * Returns the state of all interrupts (i.e., pending or not) for this IP.
  *
  * @param entropy_src A entropy_src handle.
  * @param[out] snapshot Out-param for interrupt state snapshot.
@@ -91,6 +104,17 @@ OT_WARN_UNUSED_RESULT
 dif_result_t dif_entropy_src_irq_is_pending(
     const dif_entropy_src_t *entropy_src, dif_entropy_src_irq_t irq,
     bool *is_pending);
+
+/**
+ * Acknowledges all interrupts, indicating to the hardware that all
+ * interrupts have been successfully serviced.
+ *
+ * @param entropy_src A entropy_src handle.
+ * @return The result of the operation.
+ */
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_entropy_src_irq_acknowledge_all(
+    const dif_entropy_src_t *entropy_src);
 
 /**
  * Acknowledges a particular interrupt, indicating to the hardware that it has

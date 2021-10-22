@@ -4,7 +4,7 @@
 
 // This file is auto-generated.
 
-#include "sw/device/lib/dif/dif_pwrmgr.h"
+#include "sw/device/lib/dif/autogen/dif_pwrmgr_autogen.h"
 
 #include "gtest/gtest.h"
 #include "sw/device/lib/base/mmio.h"
@@ -16,6 +16,7 @@ namespace dif_pwrmgr_autogen_unittest {
 namespace {
 using ::mock_mmio::MmioTest;
 using ::mock_mmio::MockDevice;
+using ::testing::Eq;
 using ::testing::Test;
 
 class PwrmgrTest : public Test, public MmioTest {
@@ -23,7 +24,16 @@ class PwrmgrTest : public Test, public MmioTest {
   dif_pwrmgr_t pwrmgr_ = {.base_addr = dev().region()};
 };
 
-using ::testing::Eq;
+class InitTest : public PwrmgrTest {};
+
+TEST_F(InitTest, NullArgs) {
+  EXPECT_EQ(dif_pwrmgr_init({.base_addr = dev().region()}, nullptr),
+            kDifBadArg);
+}
+
+TEST_F(InitTest, Success) {
+  EXPECT_EQ(dif_pwrmgr_init({.base_addr = dev().region()}, &pwrmgr_), kDifOk);
+}
 
 class IrqGetStateTest : public PwrmgrTest {};
 
@@ -89,6 +99,19 @@ TEST_F(IrqIsPendingTest, Success) {
       dif_pwrmgr_irq_is_pending(&pwrmgr_, kDifPwrmgrIrqWakeup, &irq_state),
       kDifOk);
   EXPECT_TRUE(irq_state);
+}
+
+class AcknowledgeAllTest : public PwrmgrTest {};
+
+TEST_F(AcknowledgeAllTest, NullArgs) {
+  EXPECT_EQ(dif_pwrmgr_irq_acknowledge_all(nullptr), kDifBadArg);
+}
+
+TEST_F(AcknowledgeAllTest, Success) {
+  EXPECT_WRITE32(PWRMGR_INTR_STATE_REG_OFFSET,
+                 std::numeric_limits<uint32_t>::max());
+
+  EXPECT_EQ(dif_pwrmgr_irq_acknowledge_all(&pwrmgr_), kDifOk);
 }
 
 class IrqAcknowledgeTest : public PwrmgrTest {};

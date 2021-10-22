@@ -4,7 +4,7 @@
 
 // This file is auto-generated.
 
-#include "sw/device/lib/dif/dif_keymgr.h"
+#include "sw/device/lib/dif/autogen/dif_keymgr_autogen.h"
 
 #include "gtest/gtest.h"
 #include "sw/device/lib/base/mmio.h"
@@ -16,6 +16,7 @@ namespace dif_keymgr_autogen_unittest {
 namespace {
 using ::mock_mmio::MmioTest;
 using ::mock_mmio::MockDevice;
+using ::testing::Eq;
 using ::testing::Test;
 
 class KeymgrTest : public Test, public MmioTest {
@@ -23,7 +24,16 @@ class KeymgrTest : public Test, public MmioTest {
   dif_keymgr_t keymgr_ = {.base_addr = dev().region()};
 };
 
-using ::testing::Eq;
+class InitTest : public KeymgrTest {};
+
+TEST_F(InitTest, NullArgs) {
+  EXPECT_EQ(dif_keymgr_init({.base_addr = dev().region()}, nullptr),
+            kDifBadArg);
+}
+
+TEST_F(InitTest, Success) {
+  EXPECT_EQ(dif_keymgr_init({.base_addr = dev().region()}, &keymgr_), kDifOk);
+}
 
 class IrqGetStateTest : public KeymgrTest {};
 
@@ -89,6 +99,19 @@ TEST_F(IrqIsPendingTest, Success) {
       dif_keymgr_irq_is_pending(&keymgr_, kDifKeymgrIrqOpDone, &irq_state),
       kDifOk);
   EXPECT_TRUE(irq_state);
+}
+
+class AcknowledgeAllTest : public KeymgrTest {};
+
+TEST_F(AcknowledgeAllTest, NullArgs) {
+  EXPECT_EQ(dif_keymgr_irq_acknowledge_all(nullptr), kDifBadArg);
+}
+
+TEST_F(AcknowledgeAllTest, Success) {
+  EXPECT_WRITE32(KEYMGR_INTR_STATE_REG_OFFSET,
+                 std::numeric_limits<uint32_t>::max());
+
+  EXPECT_EQ(dif_keymgr_irq_acknowledge_all(&keymgr_), kDifOk);
 }
 
 class IrqAcknowledgeTest : public KeymgrTest {};

@@ -22,6 +22,9 @@ class otbn_env_cfg extends cip_base_env_cfg #(.RAL_T(otbn_reg_block));
   mem_bkdr_util imem_util;
   mem_bkdr_util dmem_util;
 
+  // A handle to the scoreboard, used to flag expected errors.
+  otbn_scoreboard scoreboard;
+
   // The directory in which to look for ELF files (set by the test in build_phase; controlled by the
   // +otbn_elf_dir plusarg).
   string otbn_elf_dir;
@@ -32,6 +35,15 @@ class otbn_env_cfg extends cip_base_env_cfg #(.RAL_T(otbn_reg_block));
   // What fraction of the time should sequences use a back-door method to load up the ELF, rather
   // than generating memory transactions?
   int unsigned backdoor_load_pct = 50;
+
+  // How often should sequences enable interrupts?
+  int unsigned enable_interrupts_pct = 50;
+
+  // If a previous sequence triggered an interrupt, should we clear it again before we start?
+  int unsigned clear_irq_pct = 90;
+
+  // How often should we poll STATUS to detect completion, even though interrupts are enabled?
+  int unsigned poll_despite_interrupts_pct = 10;
 
   // The hierarchical scope of the DUT instance in the testbench. This is used when constructing the
   // DPI wrapper (in otbn_env::build_phase) to tell it where to find the DUT for backdoor loading

@@ -36,6 +36,18 @@ typedef struct dif_edn {
 } dif_edn_t;
 
 /**
+ * Creates a new handle for a(n) edn peripheral.
+ *
+ * This function does not actuate the hardware.
+ *
+ * @param base_addr The MMIO base address of the edn peripheral.
+ * @param[out] edn Out param for the initialized handle.
+ * @return The result of the operation.
+ */
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_edn_init(mmio_region_t base_addr, dif_edn_t *edn);
+
+/**
  * A edn interrupt request type.
  */
 typedef enum dif_edn_irq {
@@ -58,7 +70,7 @@ typedef enum dif_edn_irq {
 typedef uint32_t dif_edn_irq_state_snapshot_t;
 
 /**
- * Returns whether a particular interrupt is currently pending.
+ * Returns the state of all interrupts (i.e., pending or not) for this IP.
  *
  * @param edn A edn handle.
  * @param[out] snapshot Out-param for interrupt state snapshot.
@@ -79,6 +91,16 @@ dif_result_t dif_edn_irq_get_state(const dif_edn_t *edn,
 OT_WARN_UNUSED_RESULT
 dif_result_t dif_edn_irq_is_pending(const dif_edn_t *edn, dif_edn_irq_t irq,
                                     bool *is_pending);
+
+/**
+ * Acknowledges all interrupts, indicating to the hardware that all
+ * interrupts have been successfully serviced.
+ *
+ * @param edn A edn handle.
+ * @return The result of the operation.
+ */
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_edn_irq_acknowledge_all(const dif_edn_t *edn);
 
 /**
  * Acknowledges a particular interrupt, indicating to the hardware that it has

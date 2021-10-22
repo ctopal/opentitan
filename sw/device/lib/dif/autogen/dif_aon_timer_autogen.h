@@ -37,6 +37,19 @@ typedef struct dif_aon_timer {
 } dif_aon_timer_t;
 
 /**
+ * Creates a new handle for a(n) aon_timer peripheral.
+ *
+ * This function does not actuate the hardware.
+ *
+ * @param base_addr The MMIO base address of the aon_timer peripheral.
+ * @param[out] aon_timer Out param for the initialized handle.
+ * @return The result of the operation.
+ */
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_aon_timer_init(mmio_region_t base_addr,
+                                dif_aon_timer_t *aon_timer);
+
+/**
  * A aon_timer interrupt request type.
  */
 typedef enum dif_aon_timer_irq {
@@ -59,7 +72,7 @@ typedef enum dif_aon_timer_irq {
 typedef uint32_t dif_aon_timer_irq_state_snapshot_t;
 
 /**
- * Returns whether a particular interrupt is currently pending.
+ * Returns the state of all interrupts (i.e., pending or not) for this IP.
  *
  * @param aon_timer A aon_timer handle.
  * @param[out] snapshot Out-param for interrupt state snapshot.
@@ -82,6 +95,17 @@ OT_WARN_UNUSED_RESULT
 dif_result_t dif_aon_timer_irq_is_pending(const dif_aon_timer_t *aon_timer,
                                           dif_aon_timer_irq_t irq,
                                           bool *is_pending);
+
+/**
+ * Acknowledges all interrupts, indicating to the hardware that all
+ * interrupts have been successfully serviced.
+ *
+ * @param aon_timer A aon_timer handle.
+ * @return The result of the operation.
+ */
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_aon_timer_irq_acknowledge_all(
+    const dif_aon_timer_t *aon_timer);
 
 /**
  * Acknowledges a particular interrupt, indicating to the hardware that it has

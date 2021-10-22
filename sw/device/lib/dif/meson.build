@@ -4,6 +4,38 @@
 
 subdir('autogen')
 
+# ADC Control Interface DIF Library (dif_adc_ctrl)
+sw_lib_dif_adc_ctrl = declare_dependency(
+  link_with: static_library(
+    'sw_lib_dif_adc_ctrl',
+    sources: [
+      hw_ip_adc_ctrl_reg_h,
+    ],
+    dependencies: [
+      sw_lib_mmio,
+      sw_lib_dif_autogen_adc_ctrl,
+    ],
+  )
+)
+
+test('dif_adc_ctrl_unittest', executable(
+    'dif_adc_ctrl_unittest',
+    sources: [
+      'autogen/dif_adc_ctrl_autogen_unittest.cc',
+      meson.source_root() / 'sw/device/lib/dif/autogen/dif_adc_ctrl_autogen.c',
+      hw_ip_adc_ctrl_reg_h,
+    ],
+    dependencies: [
+      sw_vendor_gtest,
+      sw_lib_base_testing_mock_mmio,
+    ],
+    native: true,
+    c_args: ['-DMOCK_MMIO'],
+    cpp_args: ['-DMOCK_MMIO'],
+  ),
+  suite: 'dif',
+)
+
 # Clock Manager DIF Library (dif_clkmgr)
 sw_lib_dif_clkmgr = declare_dependency(
   link_with: static_library(
@@ -22,6 +54,7 @@ sw_lib_dif_clkmgr = declare_dependency(
 test('dif_clkmgr_unittest', executable(
     'dif_clkmgr_unittest',
     sources: [
+      'dif_clkmgr_unittest.cc',
       'autogen/dif_clkmgr_autogen_unittest.cc',
       meson.source_root() / 'sw/device/lib/dif/dif_clkmgr.c',
       meson.source_root() / 'sw/device/lib/dif/autogen/dif_clkmgr_autogen.c',
@@ -213,7 +246,7 @@ test('dif_gpio_unittest', executable(
   suite: 'dif',
 )
 
-# SPI DIF library
+# SPI Device DIF library
 sw_lib_dif_spi_device = declare_dependency(
   link_with: static_library(
     'sw_lib_dif_spi_device',
@@ -236,6 +269,38 @@ test('dif_spi_device_unittest', executable(
       meson.source_root() / 'sw/device/lib/dif/dif_spi_device.c',
       meson.source_root() / 'sw/device/lib/dif/autogen/dif_spi_device_autogen.c',
       hw_ip_spi_device_reg_h,
+    ],
+    dependencies: [
+      sw_vendor_gtest,
+      sw_lib_base_testing_mock_mmio,
+    ],
+    native: true,
+    c_args: ['-DMOCK_MMIO'],
+    cpp_args: ['-DMOCK_MMIO'],
+  ),
+  suite: 'dif',
+)
+
+# SPI Host DIF library
+sw_lib_dif_spi_host = declare_dependency(
+  link_with: static_library(
+    'sw_lib_dif_spi_host',
+    sources: [
+      hw_ip_spi_host_reg_h,
+    ],
+    dependencies: [
+      sw_lib_mmio,
+      sw_lib_dif_autogen_spi_host,
+    ],
+  )
+)
+
+test('dif_spi_host_unittest', executable(
+    'dif_spi_host_unittest',
+    sources: [
+      'autogen/dif_spi_host_autogen_unittest.cc',
+      meson.source_root() / 'sw/device/lib/dif/autogen/dif_spi_host_autogen.c',
+      hw_ip_spi_host_reg_h,
     ],
     dependencies: [
       sw_vendor_gtest,
@@ -827,7 +892,10 @@ sw_lib_dif_sram_ctrl = declare_dependency(
       hw_ip_sram_ctrl_reg_h,
       'dif_sram_ctrl.c',
     ],
-    dependencies: [sw_lib_mmio],
+    dependencies: [
+      sw_lib_mmio,
+      sw_lib_dif_autogen_sram_ctrl,
+    ],
   )
 )
 
@@ -839,6 +907,102 @@ test('dif_sram_ctrl_unittest', executable(
       meson.source_root() / 'sw/device/lib/dif/dif_sram_ctrl.c',
       meson.source_root() / 'sw/device/lib/dif/autogen/dif_sram_ctrl_autogen.c',
       hw_ip_sram_ctrl_reg_h,
+    ],
+    dependencies: [
+      sw_vendor_gtest,
+      sw_lib_base_testing_mock_mmio,
+    ],
+    native: true,
+    c_args: ['-DMOCK_MMIO'],
+    cpp_args: ['-DMOCK_MMIO'],
+  ),
+  suite: 'dif',
+)
+
+# System Reset Control DIF library
+sw_lib_dif_sysrst_ctrl = declare_dependency(
+  link_with: static_library(
+    'sw_lib_dif_sysrst_ctrl',
+    sources: [
+      hw_ip_sysrst_ctrl_reg_h,
+    ],
+    dependencies: [
+      sw_lib_mmio,
+      sw_lib_dif_autogen_sysrst_ctrl,
+    ],
+  )
+)
+
+test('dif_sysrst_ctrl_unittest', executable(
+    'dif_sysrst_ctrl_unittest',
+    sources: [
+      'autogen/dif_sysrst_ctrl_autogen_unittest.cc',
+      meson.source_root() / 'sw/device/lib/dif/autogen/dif_sysrst_ctrl_autogen.c',
+      hw_ip_sysrst_ctrl_reg_h,
+    ],
+    dependencies: [
+      sw_vendor_gtest,
+      sw_lib_base_testing_mock_mmio,
+    ],
+    native: true,
+    c_args: ['-DMOCK_MMIO'],
+    cpp_args: ['-DMOCK_MMIO'],
+  ),
+  suite: 'dif',
+)
+
+# Flash Controller library
+sw_lib_dif_flash_ctrl = declare_dependency(
+  link_with: static_library(
+    'sw_lib_dif_flash_ctrl',
+    sources: [
+      hw_ip_flash_ctrl_reg_h,
+    ],
+    dependencies: [
+      sw_lib_mmio,
+      sw_lib_dif_autogen_flash_ctrl,
+    ],
+  )
+)
+
+test('dif_flash_ctrl_unittest', executable(
+    'dif_flash_ctrl_unittest',
+    sources: [
+      'autogen/dif_flash_ctrl_autogen_unittest.cc',
+      meson.source_root() / 'sw/device/lib/dif/autogen/dif_flash_ctrl_autogen.c',
+      hw_ip_flash_ctrl_reg_h,
+    ],
+    dependencies: [
+      sw_vendor_gtest,
+      sw_lib_base_testing_mock_mmio,
+    ],
+    native: true,
+    c_args: ['-DMOCK_MMIO'],
+    cpp_args: ['-DMOCK_MMIO'],
+  ),
+  suite: 'dif',
+)
+
+# PATTGEN DIF library
+sw_lib_dif_pattgen = declare_dependency(
+  link_with: static_library(
+    'sw_lib_dif_pattgen',
+    sources: [
+      hw_ip_pattgen_reg_h,
+    ],
+    dependencies: [
+      sw_lib_mmio,
+      sw_lib_dif_autogen_pattgen,
+    ],
+  )
+)
+
+test('dif_pattgen_unittest', executable(
+    'dif_pattgen_unittest',
+    sources: [
+      'autogen/dif_pattgen_autogen_unittest.cc',
+      meson.source_root() / 'sw/device/lib/dif/autogen/dif_pattgen_autogen.c',
+      hw_ip_pattgen_reg_h,
     ],
     dependencies: [
       sw_vendor_gtest,

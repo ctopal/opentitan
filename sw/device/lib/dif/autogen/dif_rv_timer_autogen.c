@@ -4,15 +4,29 @@
 
 // This file is auto-generated.
 
-#include "sw/device/lib/dif/dif_rv_timer.h"
+#include "sw/device/lib/dif/autogen/dif_rv_timer_autogen.h"
+#include <stdint.h>
 
 #include "rv_timer_regs.h"  // Generated.
 
 #include <assert.h>
+
 static_assert(RV_TIMER_INTR_STATE0_IS_0_BIT == RV_TIMER_INTR_ENABLE0_IE_0_BIT,
               "Expected IRQ bit offsets to match across STATE/ENABLE regs.");
 static_assert(RV_TIMER_INTR_STATE0_IS_0_BIT == RV_TIMER_INTR_TEST0_T_0_BIT,
               "Expected IRQ bit offsets to match across STATE/ENABLE regs.");
+
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_rv_timer_init(mmio_region_t base_addr,
+                               dif_rv_timer_t *rv_timer) {
+  if (rv_timer == NULL) {
+    return kDifBadArg;
+  }
+
+  rv_timer->base_addr = base_addr;
+
+  return kDifOk;
+}
 
 typedef enum dif_rv_timer_intr_reg {
   kDifRvTimerIntrRegState = 0,
@@ -61,8 +75,8 @@ static bool rv_timer_get_irq_reg_offset(dif_rv_timer_intr_reg_t intr_reg,
 /**
  * Get the corresponding interrupt register bit offset of the IRQ. If the IP's
  * HJSON does NOT have a field "no_auto_intr_regs = true", then the
- * "<ip>_INTR_COMMON_<irq>_BIT" macro can used. Otherwise, special cases will
- * exist, as templated below.
+ * "<ip>_INTR_COMMON_<irq>_BIT" macro can be used. Otherwise, special cases
+ * will exist, as templated below.
  */
 static bool rv_timer_get_irq_bit_index(dif_rv_timer_irq_t irq,
                                        bitfield_bit32_index_t *index_out) {
@@ -118,6 +132,27 @@ dif_result_t dif_rv_timer_irq_is_pending(const dif_rv_timer_t *rv_timer,
   uint32_t intr_state_reg = mmio_region_read32(rv_timer->base_addr, reg_offset);
 
   *is_pending = bitfield_bit32_read(intr_state_reg, index);
+
+  return kDifOk;
+}
+
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_rv_timer_irq_acknowledge_all(const dif_rv_timer_t *rv_timer,
+                                              uint32_t hart_id) {
+  if (rv_timer == NULL) {
+    return kDifBadArg;
+  }
+
+  // Writing to the register clears the corresponding bits (Write-one clear).
+  switch (hart_id) {
+    case 0:
+      mmio_region_write32(rv_timer->base_addr, RV_TIMER_INTR_STATE0_REG_OFFSET,
+                          UINT32_MAX);
+
+      break;
+    default:
+      return kDifBadArg;
+  }
 
   return kDifOk;
 }

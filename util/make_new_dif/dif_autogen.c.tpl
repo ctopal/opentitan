@@ -26,14 +26,14 @@
 
 // This file is auto-generated.
 
-#include "sw/device/lib/dif/dif_${ip.name_snake}.h"
+#include <stdint.h>
+#include "sw/device/lib/dif/autogen/dif_${ip.name_snake}_autogen.h"
 
 #include "${ip.name_snake}_regs.h"  // Generated.
 
-% if len(ip.irqs) > 0:
-
 % if ip.name_snake == "aon_timer":
   #include <assert.h>
+
   % for irq in ip.irqs:
     static_assert(${ip.name_upper}_INTR_STATE_${irq.name_upper}_BIT == 
                   ${ip.name_upper}_INTR_TEST_${irq.name_upper}_BIT,
@@ -42,6 +42,7 @@
 
 % elif ip.name_snake == "rv_timer":
   #include <assert.h>
+
   % for irq in ip.irqs:
     static_assert(${ip.name_upper}_INTR_STATE0_IS_${loop.index}_BIT == 
                   ${ip.name_upper}_INTR_ENABLE0_IE_${loop.index}_BIT,
@@ -50,48 +51,64 @@
                   ${ip.name_upper}_INTR_TEST0_T_${loop.index}_BIT,
                   "Expected IRQ bit offsets to match across STATE/ENABLE regs.");
   % endfor
-
-  typedef enum dif_${ip.name_snake}_intr_reg {
-    kDif${ip.name_camel}IntrRegState = 0,
-    kDif${ip.name_camel}IntrRegEnable = 1,
-    kDif${ip.name_camel}IntrRegTest = 2,
-  } dif_${ip.name_snake}_intr_reg_t;
-
-  static bool ${ip.name_snake}_get_irq_reg_offset(
-    dif_${ip.name_snake}_intr_reg_t intr_reg,
-    dif_${ip.name_snake}_irq_t irq,
-    uint32_t *intr_reg_offset) {
-
-    switch (intr_reg) {
-
-    % for intr_reg_str in ["State", "Enable", "Test"]:
-      case kDif${ip.name_camel}IntrReg${intr_reg_str}:
-        switch (irq) {
-        % for hart_id in range(int(ip.parameters["N_HARTS"].default)):
-          % for timer_id in range(int(ip.parameters["N_TIMERS"].default)):
-            case kDif${ip.name_camel}IrqTimerExpiredHart${hart_id}Timer${timer_id}:
-              *intr_reg_offset = ${ip.name_upper}_INTR_${intr_reg_str.upper()}${hart_id}_REG_OFFSET;
-              break;
-          % endfor
-        % endfor
-          default:
-            return false;
-        }
-        break;
-    % endfor
-      default:
-        return false;
-    }
-
-    return true;
-  }
 % endif
+
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_${ip.name_snake}_init(
+  mmio_region_t base_addr,
+  dif_${ip.name_snake}_t *${ip.name_snake}) {
+  if (${ip.name_snake} == NULL) {
+    return kDifBadArg;
+  }
+
+  ${ip.name_snake}->base_addr = base_addr;
+
+  return kDifOk;
+}
+
+% if len(ip.irqs) > 0:
+  % if ip.name_snake == "rv_timer":
+    typedef enum dif_${ip.name_snake}_intr_reg {
+      kDif${ip.name_camel}IntrRegState = 0,
+      kDif${ip.name_camel}IntrRegEnable = 1,
+      kDif${ip.name_camel}IntrRegTest = 2,
+    } dif_${ip.name_snake}_intr_reg_t;
+
+    static bool ${ip.name_snake}_get_irq_reg_offset(
+      dif_${ip.name_snake}_intr_reg_t intr_reg,
+      dif_${ip.name_snake}_irq_t irq,
+      uint32_t *intr_reg_offset) {
+
+      switch (intr_reg) {
+
+      % for intr_reg_str in ["State", "Enable", "Test"]:
+        case kDif${ip.name_camel}IntrReg${intr_reg_str}:
+          switch (irq) {
+          % for hart_id in range(int(ip.parameters["N_HARTS"].default)):
+            % for timer_id in range(int(ip.parameters["N_TIMERS"].default)):
+              case kDif${ip.name_camel}IrqTimerExpiredHart${hart_id}Timer${timer_id}:
+                *intr_reg_offset = ${ip.name_upper}_INTR_${intr_reg_str.upper()}${hart_id}_REG_OFFSET;
+                break;
+            % endfor
+          % endfor
+            default:
+              return false;
+          }
+          break;
+      % endfor
+        default:
+          return false;
+      }
+
+      return true;
+    }
+  % endif
 
   /**
    * Get the corresponding interrupt register bit offset of the IRQ. If the IP's
    * HJSON does NOT have a field "no_auto_intr_regs = true", then the
-   * "<ip>_INTR_COMMON_<irq>_BIT" macro can used. Otherwise, special cases will
-   * exist, as templated below.
+   * "<ip>_INTR_COMMON_<irq>_BIT" macro can be used. Otherwise, special cases
+   * will exist, as templated below.
    */
   static bool ${ip.name_snake}_get_irq_bit_index(
     dif_${ip.name_snake}_irq_t irq,
@@ -187,6 +204,36 @@
   % endif
 
     *is_pending = bitfield_bit32_read(intr_state_reg, index);
+
+    return kDifOk;
+  }
+
+  OT_WARN_UNUSED_RESULT
+  dif_result_t dif_${ip.name_snake}_irq_acknowledge_all(
+    const dif_${ip.name_snake}_t *${ip.name_snake}
+  % if ip.name_snake == "rv_timer":
+    , uint32_t hart_id
+  % endif
+    ) {
+
+    if (${ip.name_snake} == NULL) {
+      return kDifBadArg;
+    }
+
+    // Writing to the register clears the corresponding bits (Write-one clear).
+  % if ip.name_snake == "rv_timer":
+    switch (hart_id) {
+      % for hart_id in range(int(ip.parameters["N_HARTS"].default)):
+        case ${hart_id}:
+          ${mmio_region_write32("RV_TIMER_INTR_STATE%d_REG_OFFSET" % hart_id, "UINT32_MAX")}
+          break;
+      % endfor
+      default:
+        return kDifBadArg;
+    }
+  % else:
+    ${mmio_region_write32(ip.name_upper + "_INTR_STATE_REG_OFFSET", "UINT32_MAX")}
+  % endif
 
     return kDifOk;
   }

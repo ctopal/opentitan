@@ -4,15 +4,28 @@
 
 // This file is auto-generated.
 
-#include "sw/device/lib/dif/dif_entropy_src.h"
+#include "sw/device/lib/dif/autogen/dif_entropy_src_autogen.h"
+#include <stdint.h>
 
 #include "entropy_src_regs.h"  // Generated.
+
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_entropy_src_init(mmio_region_t base_addr,
+                                  dif_entropy_src_t *entropy_src) {
+  if (entropy_src == NULL) {
+    return kDifBadArg;
+  }
+
+  entropy_src->base_addr = base_addr;
+
+  return kDifOk;
+}
 
 /**
  * Get the corresponding interrupt register bit offset of the IRQ. If the IP's
  * HJSON does NOT have a field "no_auto_intr_regs = true", then the
- * "<ip>_INTR_COMMON_<irq>_BIT" macro can used. Otherwise, special cases will
- * exist, as templated below.
+ * "<ip>_INTR_COMMON_<irq>_BIT" macro can be used. Otherwise, special cases
+ * will exist, as templated below.
  */
 static bool entropy_src_get_irq_bit_index(dif_entropy_src_irq_t irq,
                                           bitfield_bit32_index_t *index_out) {
@@ -67,6 +80,20 @@ dif_result_t dif_entropy_src_irq_is_pending(
       entropy_src->base_addr, ENTROPY_SRC_INTR_STATE_REG_OFFSET);
 
   *is_pending = bitfield_bit32_read(intr_state_reg, index);
+
+  return kDifOk;
+}
+
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_entropy_src_irq_acknowledge_all(
+    const dif_entropy_src_t *entropy_src) {
+  if (entropy_src == NULL) {
+    return kDifBadArg;
+  }
+
+  // Writing to the register clears the corresponding bits (Write-one clear).
+  mmio_region_write32(entropy_src->base_addr, ENTROPY_SRC_INTR_STATE_REG_OFFSET,
+                      UINT32_MAX);
 
   return kDifOk;
 }

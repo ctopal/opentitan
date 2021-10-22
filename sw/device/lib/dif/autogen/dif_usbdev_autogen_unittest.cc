@@ -4,7 +4,7 @@
 
 // This file is auto-generated.
 
-#include "sw/device/lib/dif/dif_usbdev.h"
+#include "sw/device/lib/dif/autogen/dif_usbdev_autogen.h"
 
 #include "gtest/gtest.h"
 #include "sw/device/lib/base/mmio.h"
@@ -16,6 +16,7 @@ namespace dif_usbdev_autogen_unittest {
 namespace {
 using ::mock_mmio::MmioTest;
 using ::mock_mmio::MockDevice;
+using ::testing::Eq;
 using ::testing::Test;
 
 class UsbdevTest : public Test, public MmioTest {
@@ -23,7 +24,16 @@ class UsbdevTest : public Test, public MmioTest {
   dif_usbdev_t usbdev_ = {.base_addr = dev().region()};
 };
 
-using ::testing::Eq;
+class InitTest : public UsbdevTest {};
+
+TEST_F(InitTest, NullArgs) {
+  EXPECT_EQ(dif_usbdev_init({.base_addr = dev().region()}, nullptr),
+            kDifBadArg);
+}
+
+TEST_F(InitTest, Success) {
+  EXPECT_EQ(dif_usbdev_init({.base_addr = dev().region()}, &usbdev_), kDifOk);
+}
 
 class IrqGetStateTest : public UsbdevTest {};
 
@@ -100,6 +110,19 @@ TEST_F(IrqIsPendingTest, Success) {
       dif_usbdev_irq_is_pending(&usbdev_, kDifUsbdevIrqLinkOutErr, &irq_state),
       kDifOk);
   EXPECT_FALSE(irq_state);
+}
+
+class AcknowledgeAllTest : public UsbdevTest {};
+
+TEST_F(AcknowledgeAllTest, NullArgs) {
+  EXPECT_EQ(dif_usbdev_irq_acknowledge_all(nullptr), kDifBadArg);
+}
+
+TEST_F(AcknowledgeAllTest, Success) {
+  EXPECT_WRITE32(USBDEV_INTR_STATE_REG_OFFSET,
+                 std::numeric_limits<uint32_t>::max());
+
+  EXPECT_EQ(dif_usbdev_irq_acknowledge_all(&usbdev_), kDifOk);
 }
 
 class IrqAcknowledgeTest : public UsbdevTest {};

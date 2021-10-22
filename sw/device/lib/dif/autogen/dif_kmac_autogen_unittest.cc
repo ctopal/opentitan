@@ -4,7 +4,7 @@
 
 // This file is auto-generated.
 
-#include "sw/device/lib/dif/dif_kmac.h"
+#include "sw/device/lib/dif/autogen/dif_kmac_autogen.h"
 
 #include "gtest/gtest.h"
 #include "sw/device/lib/base/mmio.h"
@@ -16,6 +16,7 @@ namespace dif_kmac_autogen_unittest {
 namespace {
 using ::mock_mmio::MmioTest;
 using ::mock_mmio::MockDevice;
+using ::testing::Eq;
 using ::testing::Test;
 
 class KmacTest : public Test, public MmioTest {
@@ -23,7 +24,15 @@ class KmacTest : public Test, public MmioTest {
   dif_kmac_t kmac_ = {.base_addr = dev().region()};
 };
 
-using ::testing::Eq;
+class InitTest : public KmacTest {};
+
+TEST_F(InitTest, NullArgs) {
+  EXPECT_EQ(dif_kmac_init({.base_addr = dev().region()}, nullptr), kDifBadArg);
+}
+
+TEST_F(InitTest, Success) {
+  EXPECT_EQ(dif_kmac_init({.base_addr = dev().region()}, &kmac_), kDifOk);
+}
 
 class IrqGetStateTest : public KmacTest {};
 
@@ -95,6 +104,19 @@ TEST_F(IrqIsPendingTest, Success) {
   EXPECT_EQ(dif_kmac_irq_is_pending(&kmac_, kDifKmacIrqKmacErr, &irq_state),
             kDifOk);
   EXPECT_FALSE(irq_state);
+}
+
+class AcknowledgeAllTest : public KmacTest {};
+
+TEST_F(AcknowledgeAllTest, NullArgs) {
+  EXPECT_EQ(dif_kmac_irq_acknowledge_all(nullptr), kDifBadArg);
+}
+
+TEST_F(AcknowledgeAllTest, Success) {
+  EXPECT_WRITE32(KMAC_INTR_STATE_REG_OFFSET,
+                 std::numeric_limits<uint32_t>::max());
+
+  EXPECT_EQ(dif_kmac_irq_acknowledge_all(&kmac_), kDifOk);
 }
 
 class IrqAcknowledgeTest : public KmacTest {};

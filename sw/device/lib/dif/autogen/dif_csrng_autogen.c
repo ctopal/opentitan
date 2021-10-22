@@ -4,15 +4,27 @@
 
 // This file is auto-generated.
 
-#include "sw/device/lib/dif/dif_csrng.h"
+#include "sw/device/lib/dif/autogen/dif_csrng_autogen.h"
+#include <stdint.h>
 
 #include "csrng_regs.h"  // Generated.
+
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_csrng_init(mmio_region_t base_addr, dif_csrng_t *csrng) {
+  if (csrng == NULL) {
+    return kDifBadArg;
+  }
+
+  csrng->base_addr = base_addr;
+
+  return kDifOk;
+}
 
 /**
  * Get the corresponding interrupt register bit offset of the IRQ. If the IP's
  * HJSON does NOT have a field "no_auto_intr_regs = true", then the
- * "<ip>_INTR_COMMON_<irq>_BIT" macro can used. Otherwise, special cases will
- * exist, as templated below.
+ * "<ip>_INTR_COMMON_<irq>_BIT" macro can be used. Otherwise, special cases
+ * will exist, as templated below.
  */
 static bool csrng_get_irq_bit_index(dif_csrng_irq_t irq,
                                     bitfield_bit32_index_t *index_out) {
@@ -64,6 +76,19 @@ dif_result_t dif_csrng_irq_is_pending(const dif_csrng_t *csrng,
       mmio_region_read32(csrng->base_addr, CSRNG_INTR_STATE_REG_OFFSET);
 
   *is_pending = bitfield_bit32_read(intr_state_reg, index);
+
+  return kDifOk;
+}
+
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_csrng_irq_acknowledge_all(const dif_csrng_t *csrng) {
+  if (csrng == NULL) {
+    return kDifBadArg;
+  }
+
+  // Writing to the register clears the corresponding bits (Write-one clear).
+  mmio_region_write32(csrng->base_addr, CSRNG_INTR_STATE_REG_OFFSET,
+                      UINT32_MAX);
 
   return kDifOk;
 }

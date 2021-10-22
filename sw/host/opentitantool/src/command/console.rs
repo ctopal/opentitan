@@ -16,8 +16,9 @@ use std::time::{Duration, Instant};
 use structopt::StructOpt;
 
 use opentitanlib::app::command::CommandDispatch;
+use opentitanlib::app::TransportWrapper;
 use opentitanlib::io::uart::{Uart, UartParams};
-use opentitanlib::transport::{Capability, Transport};
+use opentitanlib::transport::Capability;
 use opentitanlib::util::file;
 
 #[derive(Debug, StructOpt)]
@@ -45,7 +46,7 @@ impl CommandDispatch for Console {
     fn run(
         &self,
         _context: &dyn Any,
-        transport: &mut dyn Transport,
+        transport: &TransportWrapper,
     ) -> Result<Option<Box<dyn Serialize>>> {
         // We need the UART for the console command to operate.
         transport.capabilities().request(Capability::UART).ok()?;
@@ -178,11 +179,8 @@ impl InnerConsole {
     // Maintain a buffer for the exit regexes to match against.
     fn append_buffer(&mut self, data: &[u8]) {
         self.buffer.push_str(&String::from_utf8_lossy(data));
-        if self.buffer.len() > InnerConsole::BUFFER_LEN {
-            let (_, end) = self
-                .buffer
-                .split_at(self.buffer.len() - InnerConsole::BUFFER_LEN);
-            self.buffer = end.to_string();
+        while self.buffer.len() > InnerConsole::BUFFER_LEN {
+            self.buffer.remove(0);
         }
     }
 

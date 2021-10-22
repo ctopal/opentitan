@@ -18,6 +18,10 @@ class otbn_base_vseq extends cip_base_vseq #(
   // "Running" flag to detect concurrent executions of run_otbn()
   protected bit running_ = 1'b0;
 
+  // The longest run seen in calls to start_running_otbn. This gets reset to zero by load_elf (since
+  // we assume we've got a new program, which might take a different amount of time)
+  protected int unsigned longest_run_ = 0;
+
   // Load the contents of an ELF file into the DUT's memories, either by a DPI backdoor (if backdoor
   // is true) or with TL transactions. Also, pass loop warp rules to the ISS through the model.
   protected task load_elf(string path, bit backdoor);
@@ -26,8 +30,13 @@ class otbn_base_vseq extends cip_base_vseq #(
     end else begin
       load_elf_over_bus(path);
     end
+
     // Pass loop warp rules that we've just loaded into otbn_memutil into the model.
     otbn_take_loop_warps(cfg.model_agent_cfg.vif.handle, cfg.mem_util);
+
+    // We're loading a new program, so the tracking that we've been doing for how long runs take is
+    // no longer valid.
+    longest_run_ = 0;
   endtask
 
   // Load the contents of an ELF file into the DUT's memories by a DPI backdoor
@@ -142,24 +151,58 @@ class otbn_base_vseq extends cip_base_vseq #(
     end
 
     running_ = 1'b0;
-   endtask
+  endtask
 
   // The guts of the run_otbn task. Writes to the CMD register to start OTBN and polls the status
   // register until completion. On reset, this returns immediately.
   protected task _run_otbn();
     // Start OTBN by writing EXECUTE to the CMD register.
-    `uvm_info(`gfn, $sformatf("\n\t ----| Starting OTBN"), UVM_MEDIUM)
+    `uvm_info(`gfn, "\n\t ----| Starting OTBN", UVM_MEDIUM)
     csr_utils_pkg::csr_wr(ral.cmd, otbn_pkg::CmdExecute);
 
-    // Now wait until OTBN has finished
-    `uvm_info(`gfn, $sformatf("\n\t ----| Waiting for OTBN to finish"), UVM_MEDIUM)
-    csr_utils_pkg::csr_spinwait(.ptr(ral.status),
-                                .exp_data(otbn_pkg::StatusBusyExecute),
-                                .compare_op(CompareOpNe));
+    // Wait for OTBN to finish, either by polling or by waiting on the interrupt pins
+    if (_pick_use_interrupt()) begin
+      `uvm_info(`gfn, "\n\t ----| Waiting for OTBN to finish (interrupt)", UVM_MEDIUM)
+      wait_for_interrupt();
+    end else begin
+      `uvm_info(`gfn, "\n\t ----| Waiting for OTBN to finish (polling)", UVM_MEDIUM)
+      csr_utils_pkg::csr_spinwait(.ptr(ral.status),
+                                  .exp_data(otbn_pkg::StatusBusyExecute),
+                                  .compare_op(CompareOpNe));
+    end
 
-    `uvm_info(`gfn, $sformatf("\n\t ----| OTBN finished"), UVM_MEDIUM)
-
+    if (cfg.clk_rst_vif.rst_n) begin
+      `uvm_info(`gfn, "\n\t ----| OTBN finished", UVM_MEDIUM)
+    end else begin
+      `uvm_info(`gfn, "\n\t ----| OTBN reset", UVM_MEDIUM)
+    end
   endtask
+
+  // How should we wait until OTBN has finished?
+  //
+  // Use polling if the interrupt is disabled or if the interrupt pin is already high. If enabled,
+  // wait on the interrupt pin except occasionally (poll_despite_interrupts_pct). This exceptional
+  // case is to spot any weirdness in updating the STATUS register when interrupts are enabled.
+  protected function bit _pick_use_interrupt();
+    uvm_status_e peek_status;
+    uvm_reg_data_t peek_value;
+
+    // We can just use the RAL prediction for the enable register (since it's only updated by TL
+    // accesses).
+    if (ral.intr_enable.done.get() == 0) begin
+      return 1'b0;
+    end
+
+    // The interrupt is enabled, but maybe its state is already high. In that case, we can't use it
+    // to spot whether we've finished.
+    if (cfg.intr_vif.pins[0]) begin
+      return 1'b0;
+    end
+
+    // The interrupt is enabled and not currently triggered. Use the interrupt except
+    // poll_despite_interrupts_pct percent of the time.
+    return $urandom_range(100) > cfg.poll_despite_interrupts_pct;
+  endfunction
 
   // Monitor the bound-in loop controller interface to take action on loop warp events. Runs
   // forever, but is spawned by run_otbn(), which will kill it when the OTBN run completes or the
@@ -238,4 +281,77 @@ class otbn_base_vseq extends cip_base_vseq #(
     return elf_path;
   endfunction
 
+  // Start running OTBN (forking off a run_otbn task) and return when it's still going.
+  //
+  // This works by guessing the number of cycles to run and then returning after that time. Of
+  // course, the run_otbn task might actually finish in less time than that! If so, we run a second
+  // time and guess a smaller value.
+  //
+  // This can be used to implement things like the reset test where we want to inject some sort of
+  // error part-way into a run.
+  task start_running_otbn(bit check_end_addr);
+    bit timed_out = 1'b0;
+
+    for (int i = 0; i < 10; i++) begin
+      int cycle_counter;
+      int unsigned max_wait_cycles;
+      int unsigned wait_cycles;
+
+      // Guess the number of cycles until error is injected. The maximum wait is "75% of the longest
+      // we've seen the program run before terminating". This should avoid problems where we keep
+      // picking times that occur after the program has finished.
+      max_wait_cycles = ((longest_run_ > 0) ? longest_run_ : 1000) * 3 / 4;
+      wait_cycles = $urandom_range(max_wait_cycles) + 1;
+      fork: isolation_fork
+      begin
+        fork
+          run_otbn(.check_end_addr(check_end_addr));
+          begin
+            wait (cfg.model_agent_cfg.vif.status == otbn_pkg::StatusBusyExecute);
+            repeat (wait_cycles) begin
+              @(cfg.clk_rst_vif.cbn);
+              cycle_counter++;
+            end
+          end
+        join_any
+
+        // When we get here, we know that either the OTBN sequence finished or we timed out
+        // and it's still going. We can see whether OTBN is still going by looking at the status
+        // from the model (which is also in sync with the RTL). Because we wait on the negedge
+        // when updating cycle_counter above, we know we've got the "new version" of the status at
+        // this point.
+        if (cfg.model_agent_cfg.vif.status == otbn_pkg::StatusBusyExecute) begin
+          timed_out = 1'b1;
+        end else begin
+          timed_out = 1'b0;
+          // The OTBN sequence finished so update wait_cycles. cycle_counter should always be less
+          // than wait_cycles (because of how we calculate wait cycles).
+          `DV_CHECK_FATAL(cycle_counter < wait_cycles);
+          longest_run_ = cycle_counter;
+
+          // Wait for the run_otbn thread to finish. This will usually be instant, but might take
+          // a couple of cycles if we happen to have timed out exactly at the end of the run (when
+          // the status has switched, but before run_otbn finishes)
+          wait (!running_);
+
+          // Kill the counter thread
+          disable fork;
+        end
+      end
+      join
+      if (timed_out) break;
+    end
+
+    // If we get here and timed_out is false then something weird has happened: we've run the binary
+    // 10 times and each run has taken less than 75% of the time of the previous run. This shouldn't
+    // happen!
+    `DV_CHECK_FATAL(timed_out, "Failed to pick a working time-out")
+  endtask
+
+  // Wait for (the one and only) interrupt to strike. Returns early on reset
+  task wait_for_interrupt();
+    if (cfg.clk_rst_vif.rst_n && !cfg.intr_vif.pins[0]) begin
+      @(negedge cfg.clk_rst_vif.rst_n or posedge cfg.intr_vif.pins[0]);
+    end
+  endtask
 endclass : otbn_base_vseq

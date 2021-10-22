@@ -37,6 +37,19 @@ typedef struct dif_alert_handler {
 } dif_alert_handler_t;
 
 /**
+ * Creates a new handle for a(n) alert_handler peripheral.
+ *
+ * This function does not actuate the hardware.
+ *
+ * @param base_addr The MMIO base address of the alert_handler peripheral.
+ * @param[out] alert_handler Out param for the initialized handle.
+ * @return The result of the operation.
+ */
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_alert_handler_init(mmio_region_t base_addr,
+                                    dif_alert_handler_t *alert_handler);
+
+/**
  * A alert_handler interrupt request type.
  */
 typedef enum dif_alert_handler_irq {
@@ -71,7 +84,7 @@ typedef enum dif_alert_handler_irq {
 typedef uint32_t dif_alert_handler_irq_state_snapshot_t;
 
 /**
- * Returns whether a particular interrupt is currently pending.
+ * Returns the state of all interrupts (i.e., pending or not) for this IP.
  *
  * @param alert_handler A alert_handler handle.
  * @param[out] snapshot Out-param for interrupt state snapshot.
@@ -94,6 +107,17 @@ OT_WARN_UNUSED_RESULT
 dif_result_t dif_alert_handler_irq_is_pending(
     const dif_alert_handler_t *alert_handler, dif_alert_handler_irq_t irq,
     bool *is_pending);
+
+/**
+ * Acknowledges all interrupts, indicating to the hardware that all
+ * interrupts have been successfully serviced.
+ *
+ * @param alert_handler A alert_handler handle.
+ * @return The result of the operation.
+ */
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_alert_handler_irq_acknowledge_all(
+    const dif_alert_handler_t *alert_handler);
 
 /**
  * Acknowledges a particular interrupt, indicating to the hardware that it has

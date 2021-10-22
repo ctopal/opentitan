@@ -4,7 +4,7 @@
 
 // This file is auto-generated.
 
-#include "sw/device/lib/dif/dif_otbn.h"
+#include "sw/device/lib/dif/autogen/dif_otbn_autogen.h"
 
 #include "gtest/gtest.h"
 #include "sw/device/lib/base/mmio.h"
@@ -16,6 +16,7 @@ namespace dif_otbn_autogen_unittest {
 namespace {
 using ::mock_mmio::MmioTest;
 using ::mock_mmio::MockDevice;
+using ::testing::Eq;
 using ::testing::Test;
 
 class OtbnTest : public Test, public MmioTest {
@@ -23,7 +24,15 @@ class OtbnTest : public Test, public MmioTest {
   dif_otbn_t otbn_ = {.base_addr = dev().region()};
 };
 
-using ::testing::Eq;
+class InitTest : public OtbnTest {};
+
+TEST_F(InitTest, NullArgs) {
+  EXPECT_EQ(dif_otbn_init({.base_addr = dev().region()}, nullptr), kDifBadArg);
+}
+
+TEST_F(InitTest, Success) {
+  EXPECT_EQ(dif_otbn_init({.base_addr = dev().region()}, &otbn_), kDifOk);
+}
 
 class IrqGetStateTest : public OtbnTest {};
 
@@ -86,6 +95,19 @@ TEST_F(IrqIsPendingTest, Success) {
   EXPECT_EQ(dif_otbn_irq_is_pending(&otbn_, kDifOtbnIrqDone, &irq_state),
             kDifOk);
   EXPECT_TRUE(irq_state);
+}
+
+class AcknowledgeAllTest : public OtbnTest {};
+
+TEST_F(AcknowledgeAllTest, NullArgs) {
+  EXPECT_EQ(dif_otbn_irq_acknowledge_all(nullptr), kDifBadArg);
+}
+
+TEST_F(AcknowledgeAllTest, Success) {
+  EXPECT_WRITE32(OTBN_INTR_STATE_REG_OFFSET,
+                 std::numeric_limits<uint32_t>::max());
+
+  EXPECT_EQ(dif_otbn_irq_acknowledge_all(&otbn_), kDifOk);
 }
 
 class IrqAcknowledgeTest : public OtbnTest {};

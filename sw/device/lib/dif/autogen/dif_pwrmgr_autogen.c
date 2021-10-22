@@ -4,15 +4,27 @@
 
 // This file is auto-generated.
 
-#include "sw/device/lib/dif/dif_pwrmgr.h"
+#include "sw/device/lib/dif/autogen/dif_pwrmgr_autogen.h"
+#include <stdint.h>
 
 #include "pwrmgr_regs.h"  // Generated.
+
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_pwrmgr_init(mmio_region_t base_addr, dif_pwrmgr_t *pwrmgr) {
+  if (pwrmgr == NULL) {
+    return kDifBadArg;
+  }
+
+  pwrmgr->base_addr = base_addr;
+
+  return kDifOk;
+}
 
 /**
  * Get the corresponding interrupt register bit offset of the IRQ. If the IP's
  * HJSON does NOT have a field "no_auto_intr_regs = true", then the
- * "<ip>_INTR_COMMON_<irq>_BIT" macro can used. Otherwise, special cases will
- * exist, as templated below.
+ * "<ip>_INTR_COMMON_<irq>_BIT" macro can be used. Otherwise, special cases
+ * will exist, as templated below.
  */
 static bool pwrmgr_get_irq_bit_index(dif_pwrmgr_irq_t irq,
                                      bitfield_bit32_index_t *index_out) {
@@ -56,6 +68,19 @@ dif_result_t dif_pwrmgr_irq_is_pending(const dif_pwrmgr_t *pwrmgr,
       mmio_region_read32(pwrmgr->base_addr, PWRMGR_INTR_STATE_REG_OFFSET);
 
   *is_pending = bitfield_bit32_read(intr_state_reg, index);
+
+  return kDifOk;
+}
+
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_pwrmgr_irq_acknowledge_all(const dif_pwrmgr_t *pwrmgr) {
+  if (pwrmgr == NULL) {
+    return kDifBadArg;
+  }
+
+  // Writing to the register clears the corresponding bits (Write-one clear).
+  mmio_region_write32(pwrmgr->base_addr, PWRMGR_INTR_STATE_REG_OFFSET,
+                      UINT32_MAX);
 
   return kDifOk;
 }

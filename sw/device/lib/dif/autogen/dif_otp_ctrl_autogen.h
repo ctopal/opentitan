@@ -36,6 +36,19 @@ typedef struct dif_otp_ctrl {
 } dif_otp_ctrl_t;
 
 /**
+ * Creates a new handle for a(n) otp_ctrl peripheral.
+ *
+ * This function does not actuate the hardware.
+ *
+ * @param base_addr The MMIO base address of the otp_ctrl peripheral.
+ * @param[out] otp_ctrl Out param for the initialized handle.
+ * @return The result of the operation.
+ */
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_otp_ctrl_init(mmio_region_t base_addr,
+                               dif_otp_ctrl_t *otp_ctrl);
+
+/**
  * A otp_ctrl interrupt request type.
  */
 typedef enum dif_otp_ctrl_irq {
@@ -59,7 +72,7 @@ typedef enum dif_otp_ctrl_irq {
 typedef uint32_t dif_otp_ctrl_irq_state_snapshot_t;
 
 /**
- * Returns whether a particular interrupt is currently pending.
+ * Returns the state of all interrupts (i.e., pending or not) for this IP.
  *
  * @param otp_ctrl A otp_ctrl handle.
  * @param[out] snapshot Out-param for interrupt state snapshot.
@@ -82,6 +95,16 @@ OT_WARN_UNUSED_RESULT
 dif_result_t dif_otp_ctrl_irq_is_pending(const dif_otp_ctrl_t *otp_ctrl,
                                          dif_otp_ctrl_irq_t irq,
                                          bool *is_pending);
+
+/**
+ * Acknowledges all interrupts, indicating to the hardware that all
+ * interrupts have been successfully serviced.
+ *
+ * @param otp_ctrl A otp_ctrl handle.
+ * @return The result of the operation.
+ */
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_otp_ctrl_irq_acknowledge_all(const dif_otp_ctrl_t *otp_ctrl);
 
 /**
  * Acknowledges a particular interrupt, indicating to the hardware that it has

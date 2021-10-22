@@ -4,7 +4,7 @@
 
 // This file is auto-generated.
 
-#include "sw/device/lib/dif/dif_rv_timer.h"
+#include "sw/device/lib/dif/autogen/dif_rv_timer_autogen.h"
 
 #include "gtest/gtest.h"
 #include "sw/device/lib/base/mmio.h"
@@ -16,6 +16,7 @@ namespace dif_rv_timer_autogen_unittest {
 namespace {
 using ::mock_mmio::MmioTest;
 using ::mock_mmio::MockDevice;
+using ::testing::Eq;
 using ::testing::Test;
 
 class RvTimerTest : public Test, public MmioTest {
@@ -23,7 +24,17 @@ class RvTimerTest : public Test, public MmioTest {
   dif_rv_timer_t rv_timer_ = {.base_addr = dev().region()};
 };
 
-using ::testing::Eq;
+class InitTest : public RvTimerTest {};
+
+TEST_F(InitTest, NullArgs) {
+  EXPECT_EQ(dif_rv_timer_init({.base_addr = dev().region()}, nullptr),
+            kDifBadArg);
+}
+
+TEST_F(InitTest, Success) {
+  EXPECT_EQ(dif_rv_timer_init({.base_addr = dev().region()}, &rv_timer_),
+            kDifOk);
+}
 
 class IrqGetStateTest : public RvTimerTest {};
 
@@ -90,6 +101,23 @@ TEST_F(IrqIsPendingTest, Success) {
                 &rv_timer_, kDifRvTimerIrqTimerExpiredHart0Timer0, &irq_state),
             kDifOk);
   EXPECT_TRUE(irq_state);
+}
+
+class AcknowledgeAllTest : public RvTimerTest {};
+
+TEST_F(AcknowledgeAllTest, NullArgs) {
+  EXPECT_EQ(dif_rv_timer_irq_acknowledge_all(nullptr, 0), kDifBadArg);
+}
+
+TEST_F(AcknowledgeAllTest, BadHartId) {
+  EXPECT_EQ(dif_rv_timer_irq_acknowledge_all(nullptr, 1), kDifBadArg);
+}
+
+TEST_F(AcknowledgeAllTest, Success) {
+  EXPECT_WRITE32(RV_TIMER_INTR_STATE0_REG_OFFSET,
+                 std::numeric_limits<uint32_t>::max());
+
+  EXPECT_EQ(dif_rv_timer_irq_acknowledge_all(&rv_timer_, 0), kDifOk);
 }
 
 class IrqAcknowledgeTest : public RvTimerTest {};

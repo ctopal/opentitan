@@ -37,6 +37,19 @@ typedef struct dif_spi_device {
 } dif_spi_device_t;
 
 /**
+ * Creates a new handle for a(n) spi_device peripheral.
+ *
+ * This function does not actuate the hardware.
+ *
+ * @param base_addr The MMIO base address of the spi_device peripheral.
+ * @param[out] spi_device Out param for the initialized handle.
+ * @return The result of the operation.
+ */
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_spi_device_init(mmio_region_t base_addr,
+                                 dif_spi_device_t *spi_device);
+
+/**
  * A spi_device interrupt request type.
  */
 typedef enum dif_spi_device_irq {
@@ -79,7 +92,7 @@ typedef enum dif_spi_device_irq {
 typedef uint32_t dif_spi_device_irq_state_snapshot_t;
 
 /**
- * Returns whether a particular interrupt is currently pending.
+ * Returns the state of all interrupts (i.e., pending or not) for this IP.
  *
  * @param spi_device A spi_device handle.
  * @param[out] snapshot Out-param for interrupt state snapshot.
@@ -102,6 +115,17 @@ OT_WARN_UNUSED_RESULT
 dif_result_t dif_spi_device_irq_is_pending(const dif_spi_device_t *spi_device,
                                            dif_spi_device_irq_t irq,
                                            bool *is_pending);
+
+/**
+ * Acknowledges all interrupts, indicating to the hardware that all
+ * interrupts have been successfully serviced.
+ *
+ * @param spi_device A spi_device handle.
+ * @return The result of the operation.
+ */
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_spi_device_irq_acknowledge_all(
+    const dif_spi_device_t *spi_device);
 
 /**
  * Acknowledges a particular interrupt, indicating to the hardware that it has

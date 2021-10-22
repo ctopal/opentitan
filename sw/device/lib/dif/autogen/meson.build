@@ -2,6 +2,20 @@
 # Licensed under the Apache License, Version 2.0, see LICENSE for details.
 # SPDX-License-Identifier: Apache-2.0
 
+# Autogen ADC Control Interface DIF library
+sw_lib_dif_autogen_adc_ctrl = declare_dependency(
+  link_with: static_library(
+    'sw_lib_dif_autogen_adc_ctrl',
+    sources: [
+      hw_ip_adc_ctrl_reg_h,
+      'dif_adc_ctrl_autogen.c',
+    ],
+    dependencies: [
+      sw_lib_mmio,
+    ],
+  )
+)
+
 # Autogen AES DIF library
 sw_lib_dif_autogen_aes = declare_dependency(
   link_with: static_library(
@@ -93,6 +107,20 @@ sw_lib_dif_autogen_entropy_src = declare_dependency(
     sources: [
       hw_ip_entropy_src_reg_h,
       'dif_entropy_src_autogen.c',
+    ],
+    dependencies: [
+      sw_lib_mmio,
+    ],
+  )
+)
+
+# Autogen Flash Controller DIF library
+sw_lib_dif_autogen_flash_ctrl = declare_dependency(
+  link_with: static_library(
+    'sw_lib_dif_autogen_flash_ctrl',
+    sources: [
+      hw_ip_flash_ctrl_reg_h,
+      'dif_flash_ctrl_autogen.c',
     ],
     dependencies: [
       sw_lib_mmio,
@@ -212,6 +240,20 @@ sw_lib_dif_autogen_otp_ctrl = declare_dependency(
   )
 )
 
+# Autogen PATTGEN DIF library
+sw_lib_dif_autogen_pattgen = declare_dependency(
+  link_with: static_library(
+    'sw_lib_dif_autogen_pattgen',
+    sources: [
+      hw_ip_pattgen_reg_h,
+      'dif_pattgen_autogen.c',
+    ],
+    dependencies: [
+      sw_lib_mmio,
+    ],
+  )
+)
+
 # Autogen Pin Multiplexer DIF library
 sw_lib_dif_autogen_pinmux = declare_dependency(
   link_with: static_library(
@@ -296,6 +338,20 @@ sw_lib_dif_autogen_spi_device = declare_dependency(
   )
 )
 
+# Autogen SPI Host DIF library
+sw_lib_dif_autogen_spi_host = declare_dependency(
+  link_with: static_library(
+    'sw_lib_dif_autogen_spi_host',
+    sources: [
+      hw_ip_spi_host_reg_h,
+      'dif_spi_host_autogen.c',
+    ],
+    dependencies: [
+      sw_lib_mmio,
+    ],
+  )
+)
+
 # Autogen SRAM Controller DIF library
 sw_lib_dif_autogen_sram_ctrl = declare_dependency(
   link_with: static_library(
@@ -303,6 +359,20 @@ sw_lib_dif_autogen_sram_ctrl = declare_dependency(
     sources: [
       hw_ip_sram_ctrl_reg_h,
       'dif_sram_ctrl_autogen.c',
+    ],
+    dependencies: [
+      sw_lib_mmio,
+    ],
+  )
+)
+
+# Autogen System Reset Control DIF library
+sw_lib_dif_autogen_sysrst_ctrl = declare_dependency(
+  link_with: static_library(
+    'sw_lib_dif_autogen_sysrst_ctrl',
+    sources: [
+      hw_ip_sysrst_ctrl_reg_h,
+      'dif_sysrst_ctrl_autogen.c',
     ],
     dependencies: [
       sw_lib_mmio,

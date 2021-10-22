@@ -36,6 +36,18 @@ typedef struct dif_hmac {
 } dif_hmac_t;
 
 /**
+ * Creates a new handle for a(n) hmac peripheral.
+ *
+ * This function does not actuate the hardware.
+ *
+ * @param base_addr The MMIO base address of the hmac peripheral.
+ * @param[out] hmac Out param for the initialized handle.
+ * @return The result of the operation.
+ */
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_hmac_init(mmio_region_t base_addr, dif_hmac_t *hmac);
+
+/**
  * A hmac interrupt request type.
  */
 typedef enum dif_hmac_irq {
@@ -62,7 +74,7 @@ typedef enum dif_hmac_irq {
 typedef uint32_t dif_hmac_irq_state_snapshot_t;
 
 /**
- * Returns whether a particular interrupt is currently pending.
+ * Returns the state of all interrupts (i.e., pending or not) for this IP.
  *
  * @param hmac A hmac handle.
  * @param[out] snapshot Out-param for interrupt state snapshot.
@@ -83,6 +95,16 @@ dif_result_t dif_hmac_irq_get_state(const dif_hmac_t *hmac,
 OT_WARN_UNUSED_RESULT
 dif_result_t dif_hmac_irq_is_pending(const dif_hmac_t *hmac, dif_hmac_irq_t irq,
                                      bool *is_pending);
+
+/**
+ * Acknowledges all interrupts, indicating to the hardware that all
+ * interrupts have been successfully serviced.
+ *
+ * @param hmac A hmac handle.
+ * @return The result of the operation.
+ */
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_hmac_irq_acknowledge_all(const dif_hmac_t *hmac);
 
 /**
  * Acknowledges a particular interrupt, indicating to the hardware that it has

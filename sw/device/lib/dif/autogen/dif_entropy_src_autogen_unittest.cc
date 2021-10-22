@@ -4,7 +4,7 @@
 
 // This file is auto-generated.
 
-#include "sw/device/lib/dif/dif_entropy_src.h"
+#include "sw/device/lib/dif/autogen/dif_entropy_src_autogen.h"
 
 #include "gtest/gtest.h"
 #include "sw/device/lib/base/mmio.h"
@@ -16,6 +16,7 @@ namespace dif_entropy_src_autogen_unittest {
 namespace {
 using ::mock_mmio::MmioTest;
 using ::mock_mmio::MockDevice;
+using ::testing::Eq;
 using ::testing::Test;
 
 class EntropySrcTest : public Test, public MmioTest {
@@ -23,7 +24,17 @@ class EntropySrcTest : public Test, public MmioTest {
   dif_entropy_src_t entropy_src_ = {.base_addr = dev().region()};
 };
 
-using ::testing::Eq;
+class InitTest : public EntropySrcTest {};
+
+TEST_F(InitTest, NullArgs) {
+  EXPECT_EQ(dif_entropy_src_init({.base_addr = dev().region()}, nullptr),
+            kDifBadArg);
+}
+
+TEST_F(InitTest, Success) {
+  EXPECT_EQ(dif_entropy_src_init({.base_addr = dev().region()}, &entropy_src_),
+            kDifOk);
+}
 
 class IrqGetStateTest : public EntropySrcTest {};
 
@@ -103,6 +114,19 @@ TEST_F(IrqIsPendingTest, Success) {
                 &entropy_src_, kDifEntropySrcIrqEsFatalErr, &irq_state),
             kDifOk);
   EXPECT_FALSE(irq_state);
+}
+
+class AcknowledgeAllTest : public EntropySrcTest {};
+
+TEST_F(AcknowledgeAllTest, NullArgs) {
+  EXPECT_EQ(dif_entropy_src_irq_acknowledge_all(nullptr), kDifBadArg);
+}
+
+TEST_F(AcknowledgeAllTest, Success) {
+  EXPECT_WRITE32(ENTROPY_SRC_INTR_STATE_REG_OFFSET,
+                 std::numeric_limits<uint32_t>::max());
+
+  EXPECT_EQ(dif_entropy_src_irq_acknowledge_all(&entropy_src_), kDifOk);
 }
 
 class IrqAcknowledgeTest : public EntropySrcTest {};

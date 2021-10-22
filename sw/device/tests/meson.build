@@ -540,6 +540,25 @@ sw_tests += {
   }
 }
 
+# SRAM Controller scrambled access test.
+sram_ctrl_scrambled_access_test_lib = declare_dependency(
+  link_with: static_library(
+    'sram_ctrl_scrambled_access_test_lib',
+    sources: ['sram_ctrl_scrambled_access_test.c'],
+    dependencies: [
+      sw_lib_dif_sram_ctrl,
+      sw_lib_runtime_log,
+      sw_lib_testing_sram_ctrl_testutils,
+      top_earlgrey,
+    ],
+  ),
+)
+sw_tests += {
+  'sram_ctrl_scrambled_access_test': {
+    'library': sram_ctrl_scrambled_access_test_lib,
+  }
+}
+
 ###############################################################################
 # Auto-generated tests
 ###############################################################################
@@ -726,6 +745,7 @@ foreach sw_test_name, sw_test_info : sw_rom_ext_tests
         output: '@BASENAME@.@0@.signed.bin'.format(key_name),
         command: [
           rom_ext_signer_export.full_path(),
+          'rom_ext',
           '@INPUT@',
           key_info['path'],
           sw_test_elf.full_path(),

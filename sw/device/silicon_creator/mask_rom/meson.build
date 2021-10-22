@@ -30,7 +30,7 @@ sw_silicon_creator_mask_rom_sigverify = declare_dependency(
   ),
 )
 
-# ROM_EXT image.
+# Mask ROM boot policy.
 sw_silicon_creator_mask_rom_boot_policy = declare_dependency(
   link_with: static_library(
     'sw_silicon_creator_mask_rom_boot_policy',
@@ -199,13 +199,13 @@ mask_rom_lib = declare_dependency(
       sw_silicon_creator_lib_driver_uart,
       sw_silicon_creator_lib_fake_deps,
       sw_silicon_creator_lib_irq_asm,
+      sw_silicon_creator_lib_log,
       sw_silicon_creator_lib_manifest,
       sw_silicon_creator_lib_shutdown,
       sw_silicon_creator_mask_rom_epmp,
       sw_silicon_creator_mask_rom_sigverify,
       sw_silicon_creator_mask_rom_boot_policy,
       sw_lib_crt,
-      sw_lib_runtime_print,
     ],
     link_with: static_library(
       'mask_rom_lib',

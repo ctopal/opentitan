@@ -36,6 +36,18 @@ typedef struct dif_i2c {
 } dif_i2c_t;
 
 /**
+ * Creates a new handle for a(n) i2c peripheral.
+ *
+ * This function does not actuate the hardware.
+ *
+ * @param base_addr The MMIO base address of the i2c peripheral.
+ * @param[out] i2c Out param for the initialized handle.
+ * @return The result of the operation.
+ */
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_i2c_init(mmio_region_t base_addr, dif_i2c_t *i2c);
+
+/**
  * A i2c interrupt request type.
  */
 typedef enum dif_i2c_irq {
@@ -117,7 +129,7 @@ typedef enum dif_i2c_irq {
 typedef uint32_t dif_i2c_irq_state_snapshot_t;
 
 /**
- * Returns whether a particular interrupt is currently pending.
+ * Returns the state of all interrupts (i.e., pending or not) for this IP.
  *
  * @param i2c A i2c handle.
  * @param[out] snapshot Out-param for interrupt state snapshot.
@@ -138,6 +150,16 @@ dif_result_t dif_i2c_irq_get_state(const dif_i2c_t *i2c,
 OT_WARN_UNUSED_RESULT
 dif_result_t dif_i2c_irq_is_pending(const dif_i2c_t *i2c, dif_i2c_irq_t irq,
                                     bool *is_pending);
+
+/**
+ * Acknowledges all interrupts, indicating to the hardware that all
+ * interrupts have been successfully serviced.
+ *
+ * @param i2c A i2c handle.
+ * @return The result of the operation.
+ */
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_i2c_irq_acknowledge_all(const dif_i2c_t *i2c);
 
 /**
  * Acknowledges a particular interrupt, indicating to the hardware that it has
