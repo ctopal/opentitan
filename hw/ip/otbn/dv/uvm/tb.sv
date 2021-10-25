@@ -118,11 +118,11 @@ module tb;
 
     .clk_edn_i (edn_clk),
     .rst_edn_ni(edn_rst_n),
-    .edn_rnd_o (edn_if.req),
-    .edn_rnd_i ({edn_if.ack, edn_if.d_data}),
+    .edn_rnd_o (edn_if[0].req),
+    .edn_rnd_i ({edn_if[0].ack, edn_if[0].d_data}),
 
-    .edn_urnd_o(edn_urnd_req),
-    .edn_urnd_i(edn_urnd_rsp),
+    .edn_urnd_o(edn_if[1].req),
+    .edn_urnd_i({edn_if[1].ack, edn_if[1].d_data}),
 
     .clk_otp_i     (clk),
     .rst_otp_ni    (rst_n),
@@ -205,7 +205,7 @@ module tb;
 
     .err_bits_o   (),
 
-    .edn_rnd_i             ({edn_if.ack, edn_if.d_data}),
+    .edn_rnd_i             ({edn_if[0].ack, edn_if[0].d_data}),
     .edn_rnd_cdc_done_i    (edn_rnd_cdc_done),
 
     .edn_urnd_data_valid_i (edn_urnd_data_valid),
