@@ -30,7 +30,7 @@ class cip_base_env_cfg #(type RAL_T = dv_base_reg_block) extends dv_base_env_cfg
   bit                 en_tl_intg_gen = 1;
 
   alert_esc_agent_cfg m_alert_agent_cfg[string];
-  push_pull_agent_cfg#(.DeviceDataWidth(EDN_DATA_WIDTH)) m_edn_pull_agent_cfg;
+  push_pull_agent_cfg#(.DeviceDataWidth(EDN_DATA_WIDTH)) m_edn_pull_agent_cfg[*];
 
   // EDN clk freq setting, if EDN is present.
   rand uint edn_clk_freq_mhz;
@@ -50,7 +50,7 @@ class cip_base_env_cfg #(type RAL_T = dv_base_reg_block) extends dv_base_env_cfg
   bit  has_shadowed_regs = 0;
 
   uint num_interrupts;
-
+  uint num_edn = 1;
   // if module has alerts, this list_of_alerts needs to override in cfg before super.initialize()
   // function is called
   string list_of_alerts[] = {};
@@ -120,12 +120,14 @@ class cip_base_env_cfg #(type RAL_T = dv_base_reg_block) extends dv_base_env_cfg
     end
 
     if (has_edn) begin
-      m_edn_pull_agent_cfg = push_pull_agent_cfg#(.DeviceDataWidth(EDN_DATA_WIDTH))::type_id::
-                             create("m_edn_pull_agent_cfg");
-      `DV_CHECK_RANDOMIZE_FATAL(m_edn_pull_agent_cfg)
-      m_edn_pull_agent_cfg.agent_type = PullAgent;
-      m_edn_pull_agent_cfg.if_mode    = Device;
-      m_edn_pull_agent_cfg.hold_d_data_until_next_req = 1;
+      for (int i = 0; i < num_edn; i++) begin
+        m_edn_pull_agent_cfg[i] = push_pull_agent_cfg#(.DeviceDataWidth(EDN_DATA_WIDTH))::type_id::
+                                   create("m_edn_pull_agent_cfg");
+        `DV_CHECK_RANDOMIZE_FATAL(m_edn_pull_agent_cfg[i])
+        m_edn_pull_agent_cfg[i].agent_type = PullAgent;
+        m_edn_pull_agent_cfg[i].if_mode    = Device;
+        m_edn_pull_agent_cfg[i].hold_d_data_until_next_req = 1;
+      end
     end
   endfunction
 
