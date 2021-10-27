@@ -796,7 +796,7 @@ module otbn
     assign start_rtl = start_q & ~otbn_use_model;
 
     // Model (Instruction Set Simulator)
-    assign edn_rnd_data_valid = edn_rnd_req & edn_rnd_ack;
+    assign edn_rnd_data_valid =  otbn_use_model ? 1'b1 : edn_rnd_req & edn_rnd_ack;
     assign edn_urnd_data_valid = otbn_use_model ? 1'b1 : edn_urnd_req & edn_urnd_ack;
 
     otbn_core_model #(
@@ -818,7 +818,8 @@ module otbn
       .edn_rnd_i             (edn_rnd_i),
       .edn_rnd_cdc_done_i    (edn_rnd_data_valid),
 
-      .edn_urnd_data_valid_i (edn_urnd_data_valid),
+      .edn_urnd_i            (edn_urnd_i),
+      .edn_urnd_cdc_done_i   (edn_urnd_data_valid),
 
       .insn_cnt_o            (insn_cnt_model),
 

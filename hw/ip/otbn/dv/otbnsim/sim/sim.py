@@ -117,6 +117,7 @@ class OTBNSim:
         returns no instruction and no changes.
 
         '''
+        self.state.wsrs.URND.step()
         if not self.state.running():
             return (None, [])
 
