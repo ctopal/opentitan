@@ -194,28 +194,25 @@ class OTBNState:
         assert self.rnd_cdc_counter < 6
 
         # TODO: Assert rnd_cdc_pending when request is correctly modelled.
-        if self.rnd_cdc_pending:
-            self.wsrs.RND.set_unsigned(self.rnd_256b)
-            self.rnd_256b = 0
-            self.rnd_cdc_pending = False
-            self.rnd_cdc_counter = 0
+        self.wsrs.RND.set_unsigned(self.rnd_256b)
+        self.rnd_256b = 0
+        self.rnd_cdc_pending = False
+        self.rnd_cdc_counter = 0
 
     def urnd_completed(self) -> None:
         # URND completed gets called after RTL signals that the processing
         # of incoming EDN data is done. This also sets up EXEC state of the
-        # FSM of the model. This includes a dirty hack which disables 
+        # FSM of the model. This includes a dirty hack which disables
         # fsm_state assertion because we are always calling this method
         # while we are doing system level tests. This will be removed after
-        # request modelling of EDN is done. 
+        # request modelling of EDN is done.
         assert self.urnd_cdc_counter < 6
 
-        self.fsm_state = FsmState.EXEC
         # TODO: Assert urnd_cdc_pending when request is correctly modelled.
-        if self.urnd_cdc_pending:
-            self.wsrs.URND.set_seed(self.urnd_256b)
-            self.urnd_256b = 4 * [0]
-            self.urnd_cdc_pending = False
-            self.urnd_cdc_counter = 0
+        self.wsrs.URND.set_seed(self.urnd_256b)
+        self.urnd_256b = 4 * [0]
+        self.urnd_cdc_pending = False
+        self.urnd_cdc_counter = 0
 
     def loop_start(self, iterations: int, bodysize: int) -> None:
         self.loop_stack.start_loop(self.pc + 4, iterations, bodysize)

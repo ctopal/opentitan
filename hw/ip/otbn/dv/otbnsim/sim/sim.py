@@ -117,7 +117,6 @@ class OTBNSim:
         returns no instruction and no changes.
 
         '''
-        self.state.wsrs.URND.step()
         if not self.state.running():
             return (None, [])
 
@@ -128,6 +127,8 @@ class OTBNSim:
             changes = self._on_stall(verbose, fetch_next=False)
             self.state.ext_regs.write('INSN_CNT', 0, True)
             return (None, changes)
+
+        self.state.wsrs.URND.step()
 
         if self.state.fsm_state == FsmState.POST_EXEC:
             return (None, self._on_stall(verbose, fetch_next=False))

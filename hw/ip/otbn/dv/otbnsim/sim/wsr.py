@@ -98,6 +98,7 @@ class RandWSR(WSR):
         super().__init__(name)
 
         self._random_value = None  # type: Optional[int]
+        self._next_value = None  # type: Optional[int]
         self._random_value_read = False
         self.pending_request = False
 
@@ -121,6 +122,10 @@ class RandWSR(WSR):
         return
 
     def commit(self) -> None:
+        if self._next_value is not None:
+            self._random_value = self._next_value
+        self._next_value = None
+
         if self._random_value_read:
             self._random_value = None
             self.pending_request = False
@@ -134,6 +139,10 @@ class RandWSR(WSR):
 
         self.pending_request = True
         return False
+
+    def set_next_value(self, value: int) -> None:
+        assert 0 <= value < (1 << 256)
+        self._next_value = value
 
     def set_unsigned(self, value: int) -> None:
         '''Sets a random value that can be read by a future `read_unsigned`

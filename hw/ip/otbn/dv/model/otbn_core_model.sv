@@ -124,6 +124,12 @@ module otbn_core_model
           failed_invalidate_imem <= 1'b1;
         end
       end
+      if (edn_urnd_cdc_done_i) begin
+        edn_model_urnd_cdc_done(model_handle);
+      end
+      if (edn_rnd_cdc_done_i) begin
+        edn_model_rnd_cdc_done(model_handle);
+      end
       if (start_i | running | check_due) begin
         model_state <= otbn_model_step(model_handle,
                                        start_i,
@@ -138,12 +144,6 @@ module otbn_core_model
         stop_pc_q <= stop_pc_d;
       end else begin
         // If we're not running and we're not being told to start, there's nothing to do.
-      end
-      if (edn_rnd_cdc_done_i) begin
-        edn_model_rnd_cdc_done(model_handle);
-      end
-      if (edn_urnd_cdc_done_i) begin
-        edn_model_urnd_cdc_done(model_handle);
       end
     end
   end
