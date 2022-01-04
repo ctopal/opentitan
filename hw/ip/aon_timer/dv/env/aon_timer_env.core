@@ -13,6 +13,7 @@ filesets:
       - aon_timer_env_pkg.sv
       - aon_timer_env_cfg.sv: {is_include_file: true}
       - aon_timer_env_cov.sv: {is_include_file: true}
+      - aon_timer_core_if.sv
       - aon_timer_virtual_sequencer.sv: {is_include_file: true}
       - aon_timer_scoreboard.sv: {is_include_file: true}
       - aon_timer_env.sv: {is_include_file: true}

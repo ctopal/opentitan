@@ -58,6 +58,7 @@ class aon_timer_scoreboard extends cip_base_scoreboard #(
       compute_num_clks();
       check_interrupt();
       monitor_interrupts();
+      monitor_cdc();
     join_none
   endtask
 
@@ -70,6 +71,18 @@ class aon_timer_scoreboard extends cip_base_scoreboard #(
           cov.intr_pins_cg.sample(i, cfg.aon_intr_vif.sample_pin(.idx(i)));
         end
       end
+    end
+  endtask
+
+  task monitor_cdc();
+    forever begin
+      @(cfg.core_vif.clk_aon_i);
+      `DV_CHECK_EQ(cfg.core_vif.wdog_intr_o, intr_status_exp[WDOG],
+           "WDOG Interrupt (Bark) is not passing through.")
+      `DV_CHECK_EQ(cfg.core_vif.wkup_intr_o, intr_status_exp[WKUP],
+           "WKUP Interrupt is not passing through.")
+      `DV_CHECK_EQ(cfg.core_vif.wdog_reset_req_o, wdog_rst_req_exp,
+           "WDOG Reset Request (Bite) is not passing through.")
     end
   endtask
 
