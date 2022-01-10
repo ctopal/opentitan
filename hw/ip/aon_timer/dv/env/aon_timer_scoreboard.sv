@@ -58,7 +58,7 @@ class aon_timer_scoreboard extends cip_base_scoreboard #(
       compute_num_clks();
       check_interrupt();
       monitor_interrupts();
-      monitor_cdc();
+      //monitor_cdc();
     join_none
   endtask
 
@@ -145,6 +145,7 @@ class aon_timer_scoreboard extends cip_base_scoreboard #(
       end
       "wkup_count": begin
         wkup_count =  csr.get_mirrored_value();
+        if (data_phase_write) wkup_num_update_due = 1;
       end
       "wkup_thold": begin
         wkup_thold =  csr.get_mirrored_value();
@@ -156,6 +157,7 @@ class aon_timer_scoreboard extends cip_base_scoreboard #(
       end
       "wdog_count": begin
         wdog_count =  csr.get_mirrored_value();
+        if (data_phase_write) wdog_num_update_due = 1;
       end
       "wdog_regwen": begin
         wdog_regwen =  csr.get_mirrored_value();
@@ -222,11 +224,14 @@ class aon_timer_scoreboard extends cip_base_scoreboard #(
       wait(!under_reset);
       if (wkup_num_update_due) begin
         wkup_num = ((wkup_thold - wkup_count) * (prescaler + 1));
+        `uvm_info(`gfn, $sformatf("Calculated WKUP_NUM: %d", wkup_num), UVM_LOW)
       end
       if (wdog_num_update_due) begin
         // calculate wdog bark and bite
         wdog_bark_num = bark_thold - wdog_count;
+        `uvm_info(`gfn, $sformatf("Calculated wdog_bark_num: %d", wdog_bark_num), UVM_LOW)
         wdog_bite_num = bite_thold - wdog_count;
+        `uvm_info(`gfn, $sformatf("Calculated wdog_bite_num: %d", wdog_bite_num), UVM_LOW)
       end
       wkup_num_update_due = 0;
       wdog_num_update_due = 0;
