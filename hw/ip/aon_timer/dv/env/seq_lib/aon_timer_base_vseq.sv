@@ -65,7 +65,7 @@ class aon_timer_base_vseq extends cip_base_vseq #(
   endtask
 
   // setup basic aon_timer features
-  virtual task aon_timer_init();
+  task aon_timer_init();
 
     `uvm_info(`gfn, "Initializating AON Timer. Writing 0 to WKUP_COUNT and WDOG_COUNT", UVM_LOW)
     // Register Write
