@@ -15,6 +15,7 @@ module otbn_core_model
   import otbn_pkg::*;
   import otbn_model_pkg::*;
   import edn_pkg::*;
+  import otp_ctrl_pkg::*;
   import keymgr_pkg::otbn_key_req_t;
 #(
   // The scope that contains the instruction and data memory (for DPI)
@@ -30,8 +31,10 @@ module otbn_core_model
 )(
   input  logic               clk_i,
   input  logic               clk_edn_i,
+  input  logic               clk_otp_i,
   input  logic               rst_ni,
   input  logic               rst_edn_ni,
+  input  logic               rst_otp_ni,
 
   input  logic               start_i, // start the operation
 
@@ -46,6 +49,10 @@ module otbn_core_model
   input  edn_pkg::edn_rsp_t  edn_urnd_i, // EDN response interface for URND seed
   output logic               edn_urnd_o, // EDN request interface for URND seed
   input  logic               edn_urnd_cdc_done_i, // URND seed from EDN is valid (DUT perspective)
+
+  input  otp_ctrl_pkg::otbn_otp_key_rsp_t otp_key_i, // Scrambling key response for ExtSecWipe
+  output otp_ctrl_pkg::otbn_otp_key_req_t otp_key_o, // Scrambling Key request for ExtSecWipe
+  input  logic           otp_key_cdc_done_i, // Scrambling key from OTP is valid (DUT perspective)
 
   output bit [7:0]       status_o,   // STATUS register
   output bit [31:0]      insn_cnt_o, // INSN_CNT register

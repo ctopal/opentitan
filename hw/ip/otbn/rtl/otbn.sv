@@ -253,7 +253,7 @@ module otbn
     .clk_otp_i,
     .rst_otp_ni,
 
-    .otbn_otp_key_o,
+    .otbn_otp_key_o                     (otp_key_req_rtl),
     .otbn_otp_key_i,
 
     .otbn_dmem_scramble_key_o           (otbn_dmem_scramble_key),
@@ -919,8 +919,13 @@ module otbn
 
     edn_pkg::edn_rsp_t  edn_urnd_model_i;
 
+    otp_ctrl_pkg::otbn_otp_key_rsp_t  otp_key_model_i;
+    otp_ctrl_pkg::otbn_otp_key_req_t  otp_key_req_model, otp_key_req_rtl;
+
+
     logic       edn_rnd_data_valid;
     logic       edn_urnd_data_valid;
+    logic       otp_key_data_valid;
 
     // Note that the "done" signal will come two cycles later when using the model as a core than it
     // does when using the RTL
@@ -940,6 +945,10 @@ module otbn
     assign edn_urnd_model_i    = otbn_use_model ? edn_urnd_i : '0;
     assign edn_urnd_req        = otbn_use_model ? edn_urnd_req_model : edn_urnd_req_rtl;
     assign edn_urnd_data_valid = edn_urnd_req & edn_urnd_ack;
+
+    assign otp_key_model_i     = otbn_use_model ? otbn_otp_key_i : '0;
+    assign otbn_otp_key_o      = otbn_use_model ? otp_key_req_model : otp_key_req_rtl;
+    assign otp_key_data_valid  = u_otbn_scramble_ctrl.otp_key_ack;
 
     otbn_core_model #(
       .MemScope(".."),
@@ -965,6 +974,10 @@ module otbn
       .edn_urnd_i            (edn_urnd_model_i),
       .edn_urnd_o            (edn_urnd_req_model),
       .edn_urnd_cdc_done_i   (edn_urnd_data_valid),
+
+      .otp_key_i             (otp_key_model_i),
+      .otp_key_o             (otp_key_req_model.req),
+      .otp_key_cdc_done_i    (otp_key_data_valid),
 
       .status_o              (),
       .insn_cnt_o            (insn_cnt_model),
@@ -1048,6 +1061,7 @@ module otbn
       .sideload_key_shares_valid_i ({2{keymgr_key_i.valid}})
     );
   `else
+    assign otbn_otp_key_o      = otp_key_req_rtl;
 
     otbn_core #(
       .RegFile(RegFile),
