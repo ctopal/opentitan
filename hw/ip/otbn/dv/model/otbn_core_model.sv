@@ -156,6 +156,37 @@ module otbn_core_model
     end
   end
 
+  // Scrambling Key (OTP Interface) Request Logic
+  logic otp_key_start, otp_key_req_q, otp_key_req_d;
+
+  // OTP Key Start is related with fatal errors or CMD register commands.
+  // It can either happen when we encounter a fatal error, a SEC_WIPE_*MEM command to CMD register.
+  // We are keeping track of those inside our model with the signal named otp_key_start. 
+
+  // OTP Request is only sent when we are seeing otp_key_start signal from model.
+  assign otp_key_req_d = ~otp_key_cdc_done_i & (otp_key_req_q | otp_key_start);
+  assign otp_key_o.req = otp_key_req_q;
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      otp_key_req_q <= 1'b0;
+    end else begin
+      otp_key_req_q <= otp_key_req_d;
+    end
+  end
+
+  // OTP Request is done with the OTP clock for also asserting the CDC measures in the design.
+  always_ff @(posedge clk_otp_i or negedge rst_otp_ni) begin
+    if (!rst_otp_ni) begin
+      model_otp_flush(model_handle);
+    end else begin
+      if (otp_key_i.ack) begin
+        model_otp_step(model_handle,
+                           otp_key_i.key, otp_key_i.nonce, otp_key_i.seed_valid);
+      end
+    end
+  end
+
   // The lc_escalate_en_i signal in the design goes through a prim_lc_sync which always injects
   // exactly two cycles of delay (this is a synchroniser, not a CDC, so its behaviour is easy to
   // predict). Model that delay in the SystemVerilog here, since it's much easier than handling it
