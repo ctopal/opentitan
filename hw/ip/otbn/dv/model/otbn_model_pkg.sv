@@ -40,6 +40,7 @@ package otbn_model_pkg;
                                  inout bit [7:0]  status,
                                  inout bit [31:0] insn_cnt,
                                  inout bit        rnd_req,
+                                 inout bit        mem_wipe_req,
                                  inout bit [31:0] err_bits,
                                  inout bit [31:0] stop_pc);
 

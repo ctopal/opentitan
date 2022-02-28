@@ -26,6 +26,7 @@ class MirroredRegs {
         err_bits(0),
         stop_pc(0),
         rnd_req(false),
+        mem_wipe_req(false),
         wipe_start(false) {}
 
   uint32_t status;
@@ -37,6 +38,9 @@ class MirroredRegs {
 
   // We are issuing an EDN request for RND
   bool rnd_req;
+
+  // We are issuing an Wipe request for IMEM/DMEM
+  bool mem_wipe_req;
 
   // This goes high for a single cycle when we start the internal secure wipe
   // (and can be used as a trigger to check internal state before it gets

@@ -94,6 +94,7 @@ module otbn_core_model
   bit [31:0] raw_err_bits_d, raw_err_bits_q;
   bit [31:0] stop_pc_d, stop_pc_q;
   bit        rnd_req_start_d, rnd_req_start_q;
+  bit        mem_wipe_req_start_d, mem_wipe_req_start_q;
   bit        failed_lc_escalate;
 
   bit unused_raw_err_bits;
@@ -161,10 +162,10 @@ module otbn_core_model
 
   // OTP Key Start is related with fatal errors or CMD register commands.
   // It can either happen when we encounter a fatal error, a SEC_WIPE_*MEM command to CMD register.
-  // We are keeping track of those inside our model with the signal named otp_key_start. 
+  // We are keeping track of those inside our model with the signal named otp_key_start.
 
-  // OTP Request is only sent when we are seeing otp_key_start signal from model.
-  assign otp_key_req_d = ~otp_key_cdc_done_i & (otp_key_req_q | otp_key_start);
+  // OTP Request is only sent when we are seeing mem_wipe_req_start signal from model.
+  assign otp_key_req_d = ~otp_key_cdc_done_i & (otp_key_req_q | mem_wipe_req_start_q);
   assign otp_key_o.req = otp_key_req_q;
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
@@ -178,11 +179,11 @@ module otbn_core_model
   // OTP Request is done with the OTP clock for also asserting the CDC measures in the design.
   always_ff @(posedge clk_otp_i or negedge rst_otp_ni) begin
     if (!rst_otp_ni) begin
-      model_otp_flush(model_handle);
+      //  model_otp_flush(model_handle);
     end else begin
       if (otp_key_i.ack) begin
-        model_otp_step(model_handle,
-                           otp_key_i.key, otp_key_i.nonce, otp_key_i.seed_valid);
+      //  model_otp_step(model_handle,
+      //                     otp_key_i.key, otp_key_i.nonce, otp_key_i.seed_valid);
       end
     end
   end
@@ -244,6 +245,7 @@ module otbn_core_model
       status_q <= 0;
       insn_cnt_q <= 0;
       rnd_req_start_q <= 0;
+      mem_wipe_req_start_q <= 0;
       raw_err_bits_q <= 0;
       stop_pc_q <= 0;
     end else begin
@@ -267,11 +269,13 @@ module otbn_core_model
                                        status_d,
                                        insn_cnt_d,
                                        rnd_req_start_d,
+                                       mem_wipe_req_start_d,
                                        raw_err_bits_d,
                                        stop_pc_d);
         status_q <= status_d;
         insn_cnt_q <= insn_cnt_d;
         rnd_req_start_q <= rnd_req_start_d;
+        mem_wipe_req_start_q <= mem_wipe_req_start_d;
         raw_err_bits_q <= raw_err_bits_d;
         stop_pc_q <= stop_pc_d;
       end

@@ -453,6 +453,8 @@ int ISSWrapper::step(bool gen_trace) {
     return -1;
   if (!read_ext_flag("WIPE_START", lines, &mirrored_.wipe_start))
     return -1;
+  if (!read_ext_flag("MEM_WIPE_REQ", lines, &mirrored_.mem_wipe_req))
+    return -1;
 
   return done ? 1 : 0;
 }
@@ -493,6 +495,8 @@ void ISSWrapper::reset(bool gen_trace) {
   mirrored_.insn_cnt = 0;
 
   mirrored_.rnd_req = 0;
+
+  mirrored_.mem_wipe_req = 0;
 
   // Zero our mirror of STATUS: the initial zero value for the next run doesn't
   // get reported by the ISS.

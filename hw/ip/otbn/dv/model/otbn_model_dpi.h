@@ -72,6 +72,7 @@ unsigned otbn_model_step(OtbnModel *model, svLogic start, unsigned model_state,
                          svBitVecVal *status /* bit [7:0] */,
                          svBitVecVal *insn_cnt /* bit [31:0] */,
                          svBitVecVal *rnd_req /* bit [0:0] */,
+                         svBitVecVal *mem_wipe_req /* bit [0:0] */,
                          svBitVecVal *err_bits /* bit [31:0] */,
                          svBitVecVal *stop_pc /* bit [31:0] */);
 

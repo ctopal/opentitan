@@ -227,6 +227,11 @@ class OTBNExtRegs:
         # when OTBN_USE_MODEL parameter is enabled in system level tests.
         self.regs['RND_REQ'] = make_flag_reg('RND_REQ', True)
 
+        # Add a fake "MEM_WIPE_REQ" register to pass it through otbn_core_model
+        # This is used for modelling scrambling key requests for both IMEM and
+        # DMEM secure wipes.
+        self.regs['MEM_WIPE_REQ'] = make_flag_reg('MEM_WIPE_REQ', True)
+
         # Add a fake "WIPE_START" register. We set this for a single cycle when
         # starting secure wipe and the C++ model can use this to trigger a dump
         # of internal state before it gets zeroed out.
