@@ -16,7 +16,9 @@ interface otbn_model_if
 );
 
   // Inputs to DUT
-  logic                     start;        // Start the operation
+  logic                     cmd_execute;    // Start the operation
+  logic                     cmd_dmem_wipe;  // Secure wipe the operation for DMEM
+  logic                     cmd_imem_wipe;  // Secure wipe the operation for IMEM
 
   // Outputs from DUT
   bit                       err;          // Something went wrong
@@ -42,9 +44,9 @@ interface otbn_model_if
   // Start model by setting start for a cycle. Waits until not in reset.
   task automatic start_model();
     wait(rst_ni);
-    start = 1'b1;
+    cmd_execute = 1'b1;
     @(posedge clk_i or negedge rst_ni);
-    start = 1'b0;
+    cmd_execute = 1'b0;
   endtask
 
   // Mark the entirety of IMEM as invalid

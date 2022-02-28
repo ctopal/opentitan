@@ -206,7 +206,9 @@ module tb;
   // to grab the decoded signal from TL transactions on the cycle it happens. We have an explicit
   // check in the scoreboard to ensure that this gets asserted at the time we expect (to spot any
   // decoding errors).
-  assign model_if.start = dut.start_d;
+  assign model_if.cmd_execute = dut.start_d;
+  assign model_if.cmd_dmem_wipe = dut.dmem_sec_wipe_d;
+  assign model_if.cmd_imem_wipe = dut.imem_sec_wipe_d;
 
   // Valid signals below are set when DUT finishes processing incoming 32b packages and constructs
   // 256b EDN data. Model checks if the processing of the packages are done in maximum of 5 cycles
@@ -230,7 +232,7 @@ module tb;
     .rst_ni       (model_if.rst_ni),
     .rst_edn_ni   (edn_rst_n),
 
-    .start_i      (model_if.start),
+    .start_i      (model_if.cmd_execute),
 
     .lc_escalate_en_i (escalate_if.enable == lc_ctrl_pkg::On),
 

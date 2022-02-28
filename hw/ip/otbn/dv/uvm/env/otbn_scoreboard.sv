@@ -196,6 +196,22 @@ class otbn_scoreboard extends cip_base_scoreboard #(
             end
             join_none;
           end
+          if ((item.a_data == otbn_pkg::CmdSecWipeDmem) && (model_status == otbn_pkg::StatusIdle)) begin
+            fork begin
+              repeat (2) @(cfg.clk_rst_vif.cb);
+              `DV_CHECK_FATAL(!cfg.clk_rst_vif.rst_n || model_status == otbn_pkg::StatusBusySecWipeDmem,
+                              "Model ignored a write of CmdSecWipeDmem to the CMD register.")
+            end
+            join_none;
+          end
+          if ((item.a_data == otbn_pkg::CmdSecWipeImem) && (model_status == otbn_pkg::StatusIdle)) begin
+            fork begin
+              repeat (2) @(cfg.clk_rst_vif.cb);
+              `DV_CHECK_FATAL(!cfg.clk_rst_vif.rst_n || model_status == otbn_pkg::StatusBusySecWipeImem,
+                              "Model ignored a write of CmdSecWipeImem to the CMD register.")
+            end
+            join_none;
+          end
         end
         "alert_test": begin
           if (item.is_write && (item.a_data[0])) begin
