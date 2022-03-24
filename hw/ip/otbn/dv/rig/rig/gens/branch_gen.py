@@ -31,22 +31,6 @@ class BranchGen(SnippetGen):
         self.beq = self._get_named_insn(insns_file, 'beq')
         self.bne = self._get_named_insn(insns_file, 'bne')
 
-        # beq and bne expect operands: grs1, grs2, offset
-        for insn in [self.beq, self.bne]:
-            if not (len(insn.operands) == 3 and
-                    isinstance(insn.operands[0].op_type, RegOperandType) and
-                    insn.operands[0].op_type.reg_type == 'gpr' and
-                    not insn.operands[0].op_type.is_dest() and
-                    isinstance(insn.operands[1].op_type, RegOperandType) and
-                    insn.operands[1].op_type.reg_type == 'gpr' and
-                    not insn.operands[1].op_type.is_dest() and
-                    isinstance(insn.operands[2].op_type, ImmOperandType) and
-                    insn.operands[2].op_type.signed):
-                raise RuntimeError('{} instruction from instructions file is '
-                                   'not the shape expected by the BranchGen '
-                                   'generator.'
-                                   .format(insn.mnemonic))
-
         self.imm_op_type = self.bne.operands[2].op_type
 
         for insn in insns_file.insns:

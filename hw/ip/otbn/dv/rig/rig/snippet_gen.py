@@ -10,6 +10,10 @@ actually generate some snippets, use the wrapper in snippet_gens.py.
 '''
 
 from typing import Callable, Optional, Tuple
+from unittest import result
+
+from shared.operand import (EnumOperandType, ImmOperandType, RegOperandType,
+                            OptionOperandType)
 
 from shared.insn_yaml import Insn, InsnsFile
 
@@ -98,6 +102,156 @@ class SnippetGen:
         '''
         return 1.0
 
+    def _check_insn_shape(self, insn: Optional[Insn], mnemonic: str) -> bool:
+        assert insn is not None
+        # Don't check ecall mnemonic
+        if mnemonic == 'ecall':
+            return True
+
+        ops = insn.operands
+        expected_shape = {
+            'bn.xor' :
+            len(ops) == 6 and
+            isinstance(ops[0].op_type, RegOperandType) and
+            ops[0].op_type.reg_type == 'wdr' and
+            ops[0].op_type.is_dest() and
+            isinstance(ops[1].op_type, RegOperandType) and
+            ops[1].op_type.reg_type == 'wdr' and
+            not ops[1].op_type.is_dest() and
+            isinstance(ops[2].op_type, RegOperandType) and
+            ops[2].op_type.reg_type == 'wdr' and
+            not ops[2].op_type.is_dest() and
+            isinstance(ops[4].op_type, ImmOperandType),
+
+            'bn.not' :
+            isinstance(ops[0].op_type, RegOperandType) and
+            ops[0].op_type.reg_type == 'wdr' and
+            ops[0].op_type.is_dest() and
+            isinstance(ops[1].op_type, RegOperandType) and
+            ops[1].op_type.reg_type == 'wdr' and
+            not ops[1].op_type.is_dest() and
+            isinstance(ops[2].op_type, EnumOperandType) and
+            isinstance(ops[3].op_type, ImmOperandType),
+
+            'bn.movr' :
+            len(ops) == 4 and
+            isinstance(ops[0].op_type, RegOperandType) and
+            ops[0].op_type.reg_type == 'gpr' and
+            not ops[0].op_type.is_dest() and
+            isinstance(ops[1].op_type, RegOperandType) and
+            ops[1].op_type.reg_type == 'gpr' and
+            not ops[1].op_type.is_dest() and
+            isinstance(ops[2].op_type, OptionOperandType) and
+            isinstance(ops[3].op_type, OptionOperandType),
+
+            'lw' :
+            len(ops) == 3 and
+            isinstance(ops[0].op_type, RegOperandType) and
+            ops[0].op_type.reg_type == 'gpr' and
+            ops[0].op_type.is_dest() and
+            isinstance(ops[1].op_type, ImmOperandType) and
+            isinstance(ops[2].op_type, RegOperandType) and
+            ops[2].op_type.reg_type == 'gpr' and
+            not ops[2].op_type.is_dest(),
+
+            'sw' :
+            len(ops) == 3 and
+            isinstance(ops[0].op_type, RegOperandType) and
+            ops[0].op_type.reg_type == 'gpr' and
+            not ops[0].op_type.is_dest() and
+            isinstance(ops[1].op_type, ImmOperandType) and
+            isinstance(ops[2].op_type, RegOperandType) and
+            ops[2].op_type.reg_type == 'gpr' and
+            not ops[2].op_type.is_dest(),
+
+            # BN.LID grd is destination in a sense, but it's
+            # used as the indirect destination of which we
+            # write to the calculated WDR. That makes it
+            # source from the perspective of the RIG
+            'bn.lid' :
+            len(ops) == 5 and
+            isinstance(ops[0].op_type, RegOperandType) and
+            ops[0].op_type.reg_type == 'gpr' and
+            not ops[0].op_type.is_dest() and
+            isinstance(ops[1].op_type, RegOperandType) and
+            ops[1].op_type.reg_type == 'gpr' and
+            not ops[1].op_type.is_dest() and
+            isinstance(ops[2].op_type, ImmOperandType) and
+            ops[2].op_type.signed and
+            isinstance(ops[3].op_type, OptionOperandType) and
+            isinstance(ops[4].op_type, OptionOperandType),
+
+            'bn.sid' :
+            len(ops) == 5 and
+            isinstance(ops[0].op_type, RegOperandType) and
+            ops[0].op_type.reg_type == 'gpr' and
+            not ops[0].op_type.is_dest() and
+            isinstance(ops[1].op_type, RegOperandType) and
+            ops[1].op_type.reg_type == 'gpr' and
+            not ops[1].op_type.is_dest() and
+            isinstance(ops[2].op_type, ImmOperandType) and
+            ops[2].op_type.signed and
+            isinstance(ops[3].op_type, OptionOperandType) and
+            isinstance(ops[4].op_type, OptionOperandType),
+
+            'beq' :
+            len(ops) == 3 and
+            isinstance(ops[0].op_type, RegOperandType) and
+            ops[0].op_type.reg_type == 'gpr' and
+            not ops[0].op_type.is_dest() and
+            isinstance(ops[1].op_type, RegOperandType) and
+            ops[1].op_type.reg_type == 'gpr' and
+            not ops[1].op_type.is_dest() and
+            isinstance(ops[2].op_type, ImmOperandType) and
+            ops[2].op_type.signed,
+
+            'bne' :
+            len(ops) == 3 and
+            isinstance(ops[0].op_type, RegOperandType) and
+            ops[0].op_type.reg_type == 'gpr' and
+            not ops[0].op_type.is_dest() and
+            isinstance(ops[1].op_type, RegOperandType) and
+            ops[1].op_type.reg_type == 'gpr' and
+            not ops[1].op_type.is_dest() and
+            isinstance(ops[2].op_type, ImmOperandType) and
+            ops[2].op_type.signed,
+
+            'jal' :
+            len(ops) == 2 and
+            isinstance(ops[0].op_type, RegOperandType) and
+            ops[0].op_type.reg_type == 'gpr' and
+            ops[0].op_type.is_dest() and
+            isinstance(ops[1].op_type, ImmOperandType) and
+            ops[1].op_type.signed,
+
+            'jalr' :
+            len(ops) == 3 and
+            isinstance(ops[0].op_type, RegOperandType) and
+            ops[0].op_type.reg_type == 'gpr' and
+            ops[0].op_type.is_dest() and
+            isinstance(ops[1].op_type, RegOperandType) and
+            ops[1].op_type.reg_type == 'gpr' and
+            not ops[1].op_type.is_dest() and
+            isinstance(ops[2].op_type, ImmOperandType) and
+            ops[2].op_type.signed,
+
+            'loop' :
+            len(ops) == 2 and
+            isinstance(ops[0].op_type, RegOperandType) and
+            ops[0].op_type.reg_type == 'gpr' and
+            isinstance(ops[1].op_type, ImmOperandType) and
+            not ops[1].op_type.signed,
+
+            'loopi' :
+            len(ops) == 2 and
+            isinstance(ops[0].op_type, ImmOperandType) and
+            not ops[0].op_type.signed and
+            isinstance(ops[1].op_type, ImmOperandType) and
+            not ops[1].op_type.signed
+        }[mnemonic]
+
+        return expected_shape
+
     def _get_named_insn(self, insns_file: InsnsFile, mnemonic: str) -> Insn:
         '''Get an instruction from insns_file by mnemonic
 
@@ -107,6 +261,11 @@ class SnippetGen:
 
         '''
         insn = insns_file.mnemonic_to_insn.get(mnemonic.lower())
+
+        if not self._check_insn_shape(insn, mnemonic.lower()):
+            raise RuntimeError('Fetched instruction {} from instructions file is '
+                               'not the shape expected by the generator.'.format(mnemonic.upper()))
+
         if insn is None:
             raise RuntimeError('No {} instruction in instructions file.'
                                .format(mnemonic.upper()))
