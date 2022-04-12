@@ -67,7 +67,11 @@ class otbn_base_vseq extends cip_base_vseq #(
         else
           _run_otbn_cmd(otbn_pkg::CmdSecWipeDmem);
       end
-      default : ;// Do nothing.
+      default : begin
+        // Write a bogus value
+        `uvm_info(`gfn, "\n\t ----| Writing a bogus value to CMD register", UVM_MEDIUM)
+        csr_utils_pkg::csr_wr(ral.cmd, $urandom);
+      end
     endcase
     if (backdoor) begin
       load_elf_backdoor(path);
@@ -197,6 +201,17 @@ class otbn_base_vseq extends cip_base_vseq #(
     end
   endfunction
 
+  protected task _insert_random_cmd();
+    // Write a bogus CMD value
+    logic [7:0] bogus_cmd;
+    `DV_CHECK_STD_RANDOMIZE_WITH_FATAL(bogus_cmd, bogus_cmd  dist {otbn_pkg::CmdExecute :/2,
+                                                              otbn_pkg::CmdSecWipeDmem :/ 2,
+                                                              otbn_pkg::CmdSecWipeImem :/ 2,
+                                                              [0:$] :/ 1};)
+    `uvm_info(`gfn, "\n\t ----| Writing a bogus value to CMD register", UVM_MEDIUM)
+    csr_utils_pkg::csr_wr(ral.cmd, bogus_cmd);
+  endtask
+
   // Start OTBN and then wait until done
   //
   // If the block gets reset, this task will exit early.
@@ -276,18 +291,10 @@ class otbn_base_vseq extends cip_base_vseq #(
     running_ = 1'b0;
 
     if (cfg.model_agent_cfg.vif.status == otbn_pkg::StatusLocked) begin
-      logic [7:0] wdata;
       bit cmd_wr = $urandom_range(9,0) == 0;
       if (cmd_wr) begin
         `uvm_info(`gfn, "entered locked status. Writing to cmd register", UVM_LOW)
-        `DV_CHECK_STD_RANDOMIZE_WITH_FATAL(wdata, wdata dist {otbn_pkg::CmdExecute :/2,
-                                                              otbn_pkg::CmdSecWipeDmem :/ 2,
-                                                              otbn_pkg::CmdSecWipeImem :/ 2,
-                                                              'b0 :/ 1};);
-        if (wdata == 'b0) begin
-          `DV_CHECK_STD_RANDOMIZE_FATAL(wdata);
-        end
-        csr_utils_pkg::csr_wr(ral.cmd, wdata);
+        _insert_random_cmd();
       end
     end
     csr_utils_pkg::csr_wr(ral.ctrl, 'b0);
