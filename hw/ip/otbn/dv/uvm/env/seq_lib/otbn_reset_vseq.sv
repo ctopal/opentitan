@@ -27,9 +27,6 @@ class otbn_reset_vseq extends otbn_base_vseq;
       // Start OTBN. When the task returns, we'll be part-way through a run.
       start_running_otbn(.check_end_addr(1'b1));
 
-      // Insert a random CMD write while we are running for coverage
-      _insert_random_cmd();
-
       // If this isn't the last iteration, reset the DUT
       if (i + 1 < num_iters) begin
         dut_init("HARD");

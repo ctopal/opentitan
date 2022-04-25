@@ -49,9 +49,6 @@ class otbn_escalate_vseq extends otbn_base_vseq;
     // middle of a run.
     start_running_otbn(.check_end_addr(1'b0));
 
-    // Insert a random CMD write while we are running for coverage
-    _insert_random_cmd();
-
     // Send an escalation signal immediately (the randomisation about where we should strike has
     // already been done inside start_running_otbn())
     send_escalation_signal(1);

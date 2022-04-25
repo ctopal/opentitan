@@ -48,8 +48,15 @@ class otbn_base_vseq extends cip_base_vseq #(
   protected task load_elf(string path, bit backdoor);
     otbn_pkg::cmd_e wipe_cmd;
     bit [1:0] num_wipes;
+    bit bogus_write;
+    `DV_CHECK_STD_RANDOMIZE_WITH_FATAL(bogus_write, bogus_write dist { 0 :/ 1, 1 :/ 9};)
     `DV_CHECK_STD_RANDOMIZE_WITH_FATAL(num_wipes, num_wipes inside { [0:2] };)
     `DV_CHECK_STD_RANDOMIZE_WITH_FATAL(wipe_cmd, wipe_cmd != otbn_pkg::CmdExecute;)
+    if (bogus_write) begin
+      // Write a bogus value while we are in IDLE state for coverage.
+      `uvm_info(`gfn, "\n\t ----| Writing a bogus value to CMD register", UVM_MEDIUM)
+      csr_utils_pkg::csr_wr(ral.cmd, $urandom);
+    end
     case (num_wipes)
       1 : _run_otbn_cmd(wipe_cmd); // Run a random wipe command
       2 : begin
@@ -67,11 +74,7 @@ class otbn_base_vseq extends cip_base_vseq #(
         else
           _run_otbn_cmd(otbn_pkg::CmdSecWipeDmem);
       end
-      default : begin
-        // Write a bogus value
-        `uvm_info(`gfn, "\n\t ----| Writing a bogus value to CMD register", UVM_MEDIUM)
-        csr_utils_pkg::csr_wr(ral.cmd, $urandom);
-      end
+      default : ;// Do nothing
     endcase
     if (backdoor) begin
       load_elf_backdoor(path);
@@ -291,7 +294,8 @@ class otbn_base_vseq extends cip_base_vseq #(
     running_ = 1'b0;
 
     if (cfg.model_agent_cfg.vif.status == otbn_pkg::StatusLocked) begin
-      bit cmd_wr = $urandom_range(9,0) == 0;
+      bit cmd_wr;
+      `DV_CHECK_STD_RANDOMIZE_WITH_FATAL(cmd_wr, cmd_wr dist { 0 :/ 9, 1 :/ 1};)
       if (cmd_wr) begin
         `uvm_info(`gfn, "entered locked status. Writing to cmd register", UVM_LOW)
         _insert_random_cmd();
@@ -549,7 +553,8 @@ class otbn_base_vseq extends cip_base_vseq #(
       join
       if (timed_out) break;
     end
-
+    // Insert a random CMD write while we are running for coverage
+    _insert_random_cmd();
     // If we get here and timed_out is false then something weird has happened: we've run the binary
     // 10 times and each run has taken less than 75% of the time of the previous run. This shouldn't
     // happen!

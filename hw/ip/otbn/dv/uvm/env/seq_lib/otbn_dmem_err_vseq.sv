@@ -25,9 +25,6 @@ class otbn_dmem_err_vseq extends otbn_base_vseq;
     // Start OTBN running. When this task returns, we'll be in the middle of a run.
     start_running_otbn(.check_end_addr(1'b0));
 
-    // Insert a random CMD write while we are running for coverage
-    _insert_random_cmd();
-
     key = cfg.get_dmem_key();
     nonce = cfg.get_dmem_nonce();
 
