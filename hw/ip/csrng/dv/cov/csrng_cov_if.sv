@@ -37,6 +37,15 @@ interface csrng_cov_if (
     sw_app_read_sw_app_enable_cross: cross cp_sw_app_read, cp_sw_app_enable;
   endgroup : csrng_cfg_cg
 
+  covergroup csrng_err_cg with function sample();
+    option.name         = "csrng_err_cg";
+    option.per_instance = 1;
+
+    hw_inst_exc_cp: coverpoint u_reg.hw_exc_sts_qs[NUM_HW_APPS-1:0];
+    csrng_aes_fsm_err_cp: coverpoint u_csrng_core.u_csrng_block_encrypt.u_aes_cipher_core.u_aes_cipher_control.mr_alert;
+
+  endgroup : csrng_err_cg
+
   covergroup csrng_cmds_cg with function sample(bit[NUM_HW_APPS-1:0]   app,
                                                 acmd_e                 acmd,
                                                 bit[3:0]               clen,
@@ -130,6 +139,7 @@ interface csrng_cov_if (
 
   `DV_FCOV_INSTANTIATE_CG(csrng_cfg_cg, en_full_cov)
   `DV_FCOV_INSTANTIATE_CG(csrng_cmds_cg, en_full_cov)
+  `DV_FCOV_INSTANTIATE_CG(csrng_err_cg, en_full_cov)
 
   // Sample functions needed for xcelium
   function automatic void cg_cfg_sample(csrng_env_cfg cfg);
